@@ -2,7 +2,7 @@ import os
 import logging
 from pathlib import Path
 import torch
-from transformers import LlamaTokenizer, AutoModelForCausalLM
+from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
 from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -43,15 +43,31 @@ PROMPT_TEMPLATE = """\
 """
 
 
-def load_embeddings_model():
-    logging.info("Ko SBERT NLI 모델을 로드 중입니다...")
-    model = HuggingFaceEmbeddings(
-        model_name='jhgan/ko-sbert-nli',
-        model_kwargs={'device': 'cpu'},
-        encode_kwargs={'normalize_embeddings': True}
-    )
-    logging.info("모델 로드가 완료되었습니다!")
-    return model
+class KoSimCSE:
+    def __init__(self, model_name='BM-K/KoSimCSE-roberta', device=None):
+        logging.info("KoSimCSE 임베딩 모델 로드 중입니다...")
+        self.device = device if device else (
+            "cuda" if torch.cuda.is_available() else "cpu")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name).to(self.device)
+        self.model.eval()
+        logging.info("KoSimCSE 모델 로드 완료!")
+
+    def __call__(self, text: str) -> list[float]:
+        return self.embed_query(text)
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        inputs = self.tokenizer(
+            texts, padding=True, truncation=True, return_tensors="pt").to(self.device)
+        with torch.no_grad():
+            outputs = self.model(**inputs, return_dict=True)
+            embeddings = outputs.last_hidden_state[:, 0]  # [CLS] 토큰 가져오기
+            embeddings = embeddings / \
+                embeddings.norm(dim=1, keepdim=True)  # normalize
+        return embeddings.cpu().tolist()
+
+    def embed_query(self, text: str) -> list[float]:
+        return self.embed_documents([text])[0]
 
 
 def load_or_create_faiss_index(embeddings_model):
@@ -95,7 +111,7 @@ def load_or_create_faiss_index(embeddings_model):
 
 def initialize_model_and_tokenizer(model_name):
     logging.info("모델과 토크나이저를 초기화 중입니다...")
-    tokenizer = LlamaTokenizer.from_pretrained(
+    tokenizer = AutoTokenizer.from_pretrained(
         model_name,
         use_fast=True
     )
@@ -118,19 +134,9 @@ def generate_answer(model, tokenizer, query, context):
         return_tensors="pt"
     ).to(model.device)
 
-    generation_config = GenerationConfig(
-        temperature=0.8,
-        top_p=0.8,
-        top_k=100,
-        max_new_tokens=1024,
-        early_stopping=True,
-        do_sample=True,
-    )
-
     with torch.no_grad():
         output_ids = model.generate(
             input_ids,
-            generation_config=generation_config,
             max_new_tokens=256,
             temperature=0.7,
             top_p=0.9,
@@ -144,7 +150,7 @@ def generate_answer(model, tokenizer, query, context):
 
 
 def main():
-    embeddings_model = load_embeddings_model()
+    embeddings_model = KoSimCSE()
     vector_store = load_or_create_faiss_index(embeddings_model)
 
     query = "이 텀블러는 100% 친환경 소재로 제작되었습니다."
