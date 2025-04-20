@@ -159,7 +159,7 @@ def main():
 
     context = "\n".join([doc.page_content for doc in docs])[:1000]
 
-    model_name = "davidkim205/komt-mistral-7b-v1"
+    model_name = "beomi/KoAlpaca-Polyglot-5.8B"
     model, tokenizer = initialize_model_and_tokenizer(model_name)
 
     answer = generate_answer(model, tokenizer, query, context)
