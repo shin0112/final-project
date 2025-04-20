@@ -19,25 +19,32 @@ FAISS_PATH = Path(__file__).parent.parent / 'data' / 'faiss_index'
 LAW_FILE_PATHS = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
 
 PROMPT_TEMPLATE = """\
-당신은 기업의 마케팅 문구를 분석하여 그린워싱 여부를 판단하는 전문가입니다.
-다음 문장을 읽고, 반드시 아래 형식에 맞춰 답변하세요.
+당신은 전문적인 '그린워싱 판별 전문가'입니다.
+
+주어진 문장과 가이드라인을 읽고, 반드시 아래 절차에 따라 정확히 한 번씩만 답변하세요:
+
+1. 주어진 문장에서 친환경성을 주장하는 부분을 파악합니다.
+2. 가이드라인에 따라 허위, 과장, 오해 소지가 있는지 판단합니다.
+3. 판단 결과를 "(그린워싱 가능성 있음)" 또는 "(그린워싱 가능성 없음)" 둘 중 하나로 명확히 답하세요.
+4. 판단 근거를 1~2문장으로 작성합니다. (가이드라인 조항 포함 추천)
+5. 문장을 어떻게 수정하면 되는지 1문장으로 간결히 제안합니다.
+
+[응답 양식 예시]
+1. 판단: 그린워싱 가능성 있음
+2. 근거: "100% 친환경"이라는 절대적 표현은 과장광고로 볼 수 있으며, 환경부 가이드라인 제5조 2항에 위배됩니다.
+3. 해결방안: "친환경 인증을 받은 소재로 제작되었습니다."처럼 구체적 사실을 명시합니다.
+
+[주의사항]
+- 절대 같은 문장을 반복하지 마세요.
+- 판단, 근거, 해결방안을 각각 정확히 1회씩만 작성하세요.
+- 모든 답변은 한국어로 작성하세요.
+- 응답 마지막에 반드시 '응답 끝'이라고 작성하세요.
 
 [분석할 문장]
 "{query}"
 
 [참고할 가이드라인 정보]
 {context}
-
-[요구사항]
-- 판단, 근거, 해결방안을 각각 1~2문장으로 간결하게 작성합니다.
-- 문장은 한국어로 작성합니다.
-- 절대 같은 문장을 반복하지 않습니다.
-- 응답 마지막에 반드시 '응답 끝'이라고 작성합니다.
-
-[응답 양식]
-1. 판단: (그린워싱 가능성 있음 / 없음)
-2. 근거: (판단한 이유, 가이드라인을 바탕으로 설명)
-3. 해결방안: (문장을 어떻게 수정하면 되는지 제안)
 
 응답을 시작하세요:
 """
@@ -133,6 +140,7 @@ def generate_answer(model, tokenizer, query, context):
         return_tensors="pt",
         padding=True,  # 단문 자동 패딩 → 길이 맞추기
         truncation=True,  # 장문 자동 잘라내기
+        max_length=4096,  # 최대 길이 설정
     ).to(model.device)
 
     input_ids = inputs['input_ids']
@@ -143,8 +151,8 @@ def generate_answer(model, tokenizer, query, context):
             input_ids,
             attention_mask=attention_mask,
             max_new_tokens=512,
-            temperature=0.7,
-            top_p=0.9,
+            temperature=0.3,
+            top_p=0.8,
             do_sample=True,
             pad_token_id=tokenizer.eos_token_id,
             eos_token_id=tokenizer.eos_token_id
@@ -164,7 +172,7 @@ def main():
     logging.info("FAISS 인덱스에서 유사한 문서를 검색 중입니다...")
     retriever = vector_store.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": 1}
+        search_kwargs={"k": 2}
     )
     docs = retriever.invoke(query)
 
