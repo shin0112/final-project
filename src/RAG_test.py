@@ -112,11 +112,11 @@ def initialize_model_and_tokenizer(model_name):
     logging.info("모델과 토크나이저를 초기화 중입니다...")
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
-        use_fast=True
+        use_fast=True,
+        trust_remote_code=True,
     )
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        device_map="cuda",
         torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
     )
     device = torch.device("cuda")
@@ -128,14 +128,20 @@ def initialize_model_and_tokenizer(model_name):
 
 def generate_answer(model, tokenizer, query, context):
     prompt = PROMPT_TEMPLATE.format(query=query, context=context)
-    input_ids = tokenizer.encode(
+    inputs = tokenizer(
         prompt,
-        return_tensors="pt"
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
     ).to(model.device)
+
+    input_ids = inputs['input_ids']
+    attention_mask = inputs['attention_mask']
 
     with torch.no_grad():
         output_ids = model.generate(
             input_ids,
+            attention_mask=attention_mask,
             max_new_tokens=512,
             temperature=0.7,
             top_p=0.9,
