@@ -131,8 +131,8 @@ def generate_answer(model, tokenizer, query, context):
     inputs = tokenizer(
         prompt,
         return_tensors="pt",
-        padding=True,
-        truncation=True,
+        padding=True,  # 단문 자동 패딩 → 길이 맞추기
+        truncation=True,  # 장문 자동 잘라내기
     ).to(model.device)
 
     input_ids = inputs['input_ids']
