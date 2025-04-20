@@ -26,13 +26,15 @@ def docs_load(path_list: list) -> list:
     Args:
         path_list (list): A list of file paths for the PDF files to load.
     """
+    base_path = Path(__file__).parent.parent
     pdf_list = []  # List to store loaded PDF data
 
     # todo : pdf 파일인지 확인하고, 아니면 web data load 하기 + text encoding
     for pdf_path in path_list:
-        loader = PyPDFLoader(pdf_path)
+        full_pdf_path = base_path / pdf_path
+        loader = PyPDFLoader(str(full_pdf_path))
         data = loader.load()
-        print(f"Loaded {len(data)} pages from {pdf_path}")
+        print(f"Loaded {len(data)} pages from {full_pdf_path}")
         pdf_list.append(data)
 
     return pdf_list
