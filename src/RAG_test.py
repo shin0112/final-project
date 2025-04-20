@@ -46,8 +46,7 @@ PROMPT_TEMPLATE = """\
 class KoSimCSE:
     def __init__(self, model_name='BM-K/KoSimCSE-roberta', device=None):
         logging.info("KoSimCSE 임베딩 모델 로드 중입니다...")
-        self.device = device if device else (
-            "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = "cuda"
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name).to(self.device)
         self.model.eval()
@@ -117,10 +116,10 @@ def initialize_model_and_tokenizer(model_name):
     )
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        device_map="auto",
+        device_map="cuda",
         torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
     )
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda")
     model.to(device)
     model.eval()
     logging.info("모델과 토크나이저 초기화가 완료되었습니다!")
@@ -130,14 +129,14 @@ def initialize_model_and_tokenizer(model_name):
 def generate_answer(model, tokenizer, query, context):
     prompt = PROMPT_TEMPLATE.format(query=query, context=context)
     input_ids = tokenizer.encode(
-        f"[INST]{prompt}[/INST]",
+        prompt,
         return_tensors="pt"
     ).to(model.device)
 
     with torch.no_grad():
         output_ids = model.generate(
             input_ids,
-            max_new_tokens=256,
+            max_new_tokens=512,
             temperature=0.7,
             top_p=0.9,
             do_sample=True,
