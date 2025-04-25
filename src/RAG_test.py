@@ -20,7 +20,7 @@ FAISS_PATH = Path(__file__).parent.parent / 'data' / 'faiss_index'
 GUIDELINE_FAISS_PATH = FAISS_PATH / "guideline.faiss"
 GENERAL_FAISS_PATH = FAISS_PATH / "law.faiss"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
-PROMPT_PATH = Path(__file__).parent.parent / 'data' / 'prompt.txt'
+PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt.txt'
 
 KEYWORDS = [
     "친환경", "지속 가능", "재활용", "탄소 중립", "인증", "에코", "그린", "지속 가능한",
