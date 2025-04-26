@@ -9,7 +9,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores.utils import DistanceStrategy
 from langchain_huggingface import HuggingFaceEmbeddings
+
 import get_ko_law
+import model_loader
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -20,7 +22,7 @@ FAISS_PATH = Path(__file__).parent.parent / 'data' / 'faiss_index'
 GUIDELINE_FAISS_PATH = FAISS_PATH / "guideline.faiss"
 GENERAL_FAISS_PATH = FAISS_PATH / "law.faiss"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
-PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt.txt'
+PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v2_cot_fewshot.txt'
 
 KEYWORDS = [
     "친환경", "지속 가능", "재활용", "탄소 중립", "인증", "에코", "그린", "지속 가능한",
@@ -110,24 +112,6 @@ def load_or_create_faiss_guideline(embeddings_model):
         logging.info("FAISS 인덱스가 저장되었습니다!")
 
     return guideline_store
-
-
-def initialize_model_and_tokenizer(model_name):
-    logging.info("모델과 토크나이저를 초기화 중입니다...")
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        use_fast=True,
-        trust_remote_code=True,
-    )
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-    )
-    device = torch.device("cuda")
-    model.to(device)
-    model.eval()
-    logging.info("모델과 토크나이저 초기화가 완료되었습니다!")
-    return model, tokenizer
 
 
 def generate_answer(model, tokenizer, query, context):
@@ -222,8 +206,7 @@ def main():
 
     # todo: 만약에 guideline 내부에 비슷한 문장이 있으면, 법률 검색? 근데 유사도 검색하면 일단은 1개 이상은 있는 거 아닌가
 
-    model_name = "beomi/KoAlpaca-Polyglot-5.8B"
-    model, tokenizer = initialize_model_and_tokenizer(model_name)
+    model, tokenizer = model_loader.mistralai_loader()
 
     answer = generate_answer(model, tokenizer, query, context)
     logging.info(f"답변: {answer}")
