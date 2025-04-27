@@ -1,8 +1,9 @@
 
 import logging
 import torch
+import os
 from pathlib import Path
-from huggingface_hub import snapshot_download
+from huggingface_hub import snapshot_download, login
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from mistral_inference.transformer import Transformer
@@ -10,6 +11,8 @@ from mistral_inference.generate import generate
 from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
 from mistral_common.protocol.instruct.messages import UserMessage
 from mistral_common.protocol.instruct.request import ChatCompletionRequest
+
+login(token=os.getenv("HUGGINGFACE_TOKEN"))
 
 
 def koalpaca_loader():
@@ -31,7 +34,7 @@ def koalpaca_loader():
     return model, tokenizer
 
 
-def mistralai_loader():
+def mistral_loader():
     model_name = "mistralai/Mistral-7B-Instruct-v0.3"
 
     # mistral_models_path = Path.home().joinpath(
@@ -55,6 +58,7 @@ def mistralai_loader():
         torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
         trust_remote_code=True,
     )
+    tokenizer.pad_token = tokenizer.eos_token
 
     model.eval()
     logging.info("모델과 토크나이저 초기화가 완료되었습니다!")
