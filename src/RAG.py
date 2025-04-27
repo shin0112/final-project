@@ -22,7 +22,7 @@ FAISS_PATH = Path(__file__).parent.parent / 'data' / 'faiss_index'
 GUIDELINE_FAISS_PATH = FAISS_PATH / "guideline.faiss"
 GENERAL_FAISS_PATH = FAISS_PATH / "law.faiss"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
-PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v2_cot_fewshot.txt'
+PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
 
 KEYWORDS = [
     "친환경", "지속 가능", "재활용", "탄소 중립", "인증", "에코", "그린", "지속 가능한",
@@ -168,8 +168,15 @@ def extract_key_sentences(text: str, max_sentences: int = 5) -> list[str]:
 
 
 def main():
+    # 0. 초기화
     embeddings_model = KoSimCSE()
     guideline_store = load_or_create_faiss_guideline(embeddings_model)
+
+    retriever_1st = guideline_store.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": 2}
+    )
+    model, tokenizer = model_loader.mistral_loader()
 
     # 30줄 이상의 기사 input이 들어온다.
     # 문장 분리 후, 키워드를 기반으로 의미 있는 문장만 뽑아낸다.
@@ -186,30 +193,41 @@ def main():
     소비자의 건강과 환경을 동시에 고려했습니다.
     """
 
+    # 1. 키워드 필터링
     key_sentences = extract_key_sentences(input)
     query_list = naturalize_query(key_sentences)
-    query = '\n'.join(query_list)
 
-    logging.info(f"질문: {query}")
+    results = []
+    for idx, (sentence, query) in enumerate(zip(key_sentences, query_list), 1):
+        logging.info(f"[문장 처리 시작]")
 
-    logging.info("가이드라인 문서를 검색 중입니다...")
-    retriever_1st = guideline_store.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 2}
-    )
-    guideline = retriever_1st.invoke(query)
-    context = "\n".join([doc.page_content for doc in guideline])[:1000]
-    # 유사도 검색된 문서 내용
-    logging.info("[유사도 검색] 유사도 검색된 문서 내용")
-    for i, doc in enumerate(guideline, 1):
-        logging.info(f"  [{i}] {doc.page_content}...")
+        logging.info(f"[가이드라인 검색]")
+        guideline = retriever_1st.invoke(query)
+        context = "\n".join([doc.page_content for doc in guideline])[:1000]
 
-    # todo: 만약에 guideline 내부에 비슷한 문장이 있으면, 법률 검색? 근데 유사도 검색하면 일단은 1개 이상은 있는 거 아닌가
+        logging.info(f"[1차 검색된 가이드라인 문서]")
+        for i, doc in enumerate(guideline, 1):
+            logging.info(f"  [{i}] {doc.page_content}...")
 
-    model, tokenizer = model_loader.mistralai_loader()
+        # todo: 만약에 guideline 내부에 비슷한 문장이 있으면, 법률 검색? 근데 유사도 검색하면 일단은 1개 이상은 있는 거 아닌가
 
-    answer = generate_answer(model, tokenizer, query, context)
-    logging.info(f"답변: {answer}")
+        answer = generate_answer(model, tokenizer, query, context)
+        logging.info(f"[답변 생성]")
+
+        results.append({
+            "sentence": sentence,
+            "query": query,
+            "context": context,
+            "answer": answer
+        })
+
+    for r in results:
+        print("="*80)
+        print(f"문장: {r['sentence']}")
+        print(f"Query: {r['query']}")
+        print(f"Context Preview: {r['context'][:200]}...")
+        print(f"Answer:\n{r['answer']}")
+        print("="*80)
 
 
 if __name__ == "__main__":
