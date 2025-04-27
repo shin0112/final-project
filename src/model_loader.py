@@ -17,7 +17,7 @@ login(token=os.getenv("HUGGINGFACE_TOKEN"))
 
 def koalpaca_loader():
     model_name = "beomi/KoAlpaca-Polyglot-5.8B"
-    logging.info("모델과 토크나이저를 초기화 중입니다...")
+    logging.info("[모델 초기화] KoAlpaca-Polyglot-5.8B")
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
         use_fast=True,
@@ -47,7 +47,7 @@ def mistral_loader():
     #     f"{mistral_models_path}/tokenizer.model.v3")
     # model = Transformer.from_folder(mistral_models_path)
 
-    logging.info("모델과 토크나이저를 초기화 중입니다...")
+    logging.info("[모델 초기화] Mistral-7B-Instruct-v0.3")
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
         use_fast=True,
