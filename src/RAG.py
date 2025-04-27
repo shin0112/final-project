@@ -19,8 +19,8 @@ logging.basicConfig(level=logging.INFO,
 
 # Paths
 FAISS_PATH = Path(__file__).parent.parent / 'data' / 'faiss_index'
-GUIDELINE_FAISS_PATH = FAISS_PATH / "guideline.faiss"
-GENERAL_FAISS_PATH = FAISS_PATH / "law.faiss"
+GUIDELINE_FAISS_PATH = FAISS_PATH / "guideline"
+LAW_FAISS_PATH = FAISS_PATH / "law"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
 PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
 
@@ -107,11 +107,25 @@ def load_or_create_faiss_guideline(embeddings_model):
         logging.info("법률 인덱스 생성 완료")
 
         FAISS_PATH.mkdir(parents=True, exist_ok=True)
-        guideline_store.save_local(FAISS_PATH)
-        law_store.save_local(FAISS_PATH)
+        GUIDELINE_FAISS_PATH.mkdir(parents=True, exist_ok=True)
+        LAW_FAISS_PATH.mkdir(parents=True, exist_ok=True)
+        guideline_store.save_local(GUIDELINE_FAISS_PATH)
+        law_store.save_local(LAW_FAISS_PATH)
+
         logging.info("FAISS 인덱스가 저장되었습니다!")
 
     return guideline_store
+
+
+def load_or_create_faiss_law(embeddings_model):
+    logging.info("FAISS 인덱스를 로드 중입니다...")
+    law_store = FAISS.load_local(
+        LAW_FAISS_PATH,
+        embeddings_model,
+        allow_dangerous_deserialization=True
+    )
+    logging.info("FAISS 인덱스 로드가 완료되었습니다!")
+    return law_store
 
 
 def generate_answer(model, tokenizer, query, context):
@@ -132,9 +146,10 @@ def generate_answer(model, tokenizer, query, context):
             input_ids,
             attention_mask=attention_mask,
             max_new_tokens=512,
-            temperature=0.3,
+            temperature=0.5,
             top_p=0.8,
             do_sample=True,
+            repetition_penalty=1.15,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id
         )
@@ -171,11 +186,18 @@ def main():
     # 0. 초기화
     embeddings_model = KoSimCSE()
     guideline_store = load_or_create_faiss_guideline(embeddings_model)
+    law_store = load_or_create_faiss_law(embeddings_model)
 
     retriever_1st = guideline_store.as_retriever(
         search_type="similarity",
         search_kwargs={"k": 2}
     )
+    retriever_2nd = law_store.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": 2}
+    )
+
+    # 모델 불러오기
     model, tokenizer = model_loader.mistral_loader()
 
     # 30줄 이상의 기사 input이 들어온다.
@@ -210,6 +232,15 @@ def main():
             logging.info(f"  [{i}] {doc.page_content}...")
 
         # todo: 만약에 guideline 내부에 비슷한 문장이 있으면, 법률 검색? 근데 유사도 검색하면 일단은 1개 이상은 있는 거 아닌가
+        if len(guideline) > 0:
+            logging.info(f"[그린워싱 가능성 존재]")
+
+            logging.info(f"[법률 검색]")
+            law = retriever_2nd.invoke(query)
+            context = "\n".join([doc.page_content for doc in law])[:1000]
+            logging.info(f"[2차 검색된 법률 문서]")
+            for i, doc in enumerate(law, 1):
+                logging.info(f"  [{i}] {doc.page_content}...")
 
         answer = generate_answer(model, tokenizer, query, context)
         logging.info(f"[답변 생성]")
