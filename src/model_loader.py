@@ -63,3 +63,15 @@ def mistral_loader():
     model.eval()
     logging.info("모델과 토크나이저 초기화가 완료되었습니다!")
     return model, tokenizer
+
+
+def llama3Ko_loader():
+    model_name = "AIDX-ktds/ktdsbaseLM-v0.14-onbased-llama3.1"
+    logging.info("[모델 초기화] ktdsbaseLM-v0.14-onbased-llama3.1")
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+
+    model.eval()
+    logging.info("모델과 토크나이저 초기화가 완료되었습니다!")
+
+    return model, tokenizer

@@ -198,7 +198,7 @@ def main():
     )
 
     # 모델 불러오기
-    model, tokenizer = model_loader.mistral_loader()
+    model, tokenizer = model_loader.llama3Ko_loader()
 
     # 30줄 이상의 기사 input이 들어온다.
     # 문장 분리 후, 키워드를 기반으로 의미 있는 문장만 뽑아낸다.
