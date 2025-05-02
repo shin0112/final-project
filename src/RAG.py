@@ -11,6 +11,7 @@ from langchain_community.vectorstores.utils import DistanceStrategy
 from langchain_huggingface import HuggingFaceEmbeddings
 
 import get_ko_law
+import get_data
 import model_loader
 import query_processor
 
@@ -49,7 +50,7 @@ class KoSimCSE:
     def __call__(self, text: str) -> list[float]:
         return self.embed_query(text)
 
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+    def embed_documents(self, texts) -> list[list[float]]:
         inputs = self.tokenizer(
             texts, padding=True, truncation=True, return_tensors="pt").to(self.device)
         with torch.no_grad():
@@ -160,7 +161,7 @@ def generate_answer(model, tokenizer, query, context):
     return output_text[len(prompt):].strip()
 
 
-def naturalize_query(sentences: list[str]) -> str:
+def naturalize_query(sentences) -> str:
     result = [f"'{s}'라는 문장은 그린워싱 가능성이 있는 표현인가요?" for s in sentences]
     logging.info(f"[자연어 처리] 다음 query 생성")
     for i, q in enumerate(result, 1):
@@ -168,7 +169,7 @@ def naturalize_query(sentences: list[str]) -> str:
     return result
 
 
-def extract_key_sentences(text: str, max_sentences: int = 5) -> list[str]:
+def extract_key_sentences(text: str, max_sentences: int = 5):
     # 문장 단위 분리
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
     # 키워드 점수 계산 및 정렬
@@ -201,34 +202,32 @@ def main():
 
     # 모델 불러오기
     model, tokenizer = model_loader.llama3Ko_loader()
+    tokenizer.pad_token = tokenizer.eos_token
 
-    # 30줄 이상의 기사 input이 들어온다.
-    # 문장 분리 후, 키워드를 기반으로 의미 있는 문장만 뽑아낸다.
-
-    input = """
-    이 텀블러는 100 % 친환경 소재로 제작되었습니다.
-    우리는 지속가능한 미래를 위해 작은 변화부터 시작합니다.
-    제조 과정에서 탄소 배출을 최소화하였습니다.
-    포장재는 생분해성 플라스틱으로 제작되어 자연으로 돌아갑니다.
-    이 제품은 환경부 인증을 받은 친환경 제품입니다.
-    당신의 선택이 지구를 지킵니다.
-    디자인뿐 아니라 환경까지 생각한 제품입니다.
-    모든 재료는 무독성, 무해성 기준을 만족합니다.
-    소비자의 건강과 환경을 동시에 고려했습니다.
-    """
-
-    # 1. 키워드 필터링 + 쿼리 법률 어투
-    key_sentences = extract_key_sentences(input)
-    query_list = query_processor.legalize_query(
-        naturalize_query(key_sentences)
-    )
+    # get input data 10개
+    test_input = get_data.load_test_data(10)
+    test_input = test_input.dropna(subset=["full_text"])
+    test_input = test_input[test_input["full_text"].apply(
+        lambda x: isinstance(x, str) and x.strip() != "")]
+    logging.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")
+    logging.info(f"[확인] {test_input.iloc[0]['full_text']}")
 
     results = []
-    for idx, (sentence, query) in enumerate(zip(key_sentences, query_list), 1):
-        logging.info(f"[문장 처리 시작]")
+    query = "이 기사 전체가 그린워싱에 해당합니까?"
 
+    for idx, row in test_input.iterrows():
+        raw_article = row['full_text']
+
+        if not isinstance(raw_article, str):
+            logging.warning(
+                f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
+            continue
+
+        article = raw_article.strip()
+
+        logging.info(f"[기사 처리 시작]")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
-        guideline = retriever_1st.invoke(embeddings_model.embed_query(query))
+        guideline = retriever_1st.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
 
         logging.info(f"[1차 검색된 가이드라인 문서]")
@@ -238,10 +237,10 @@ def main():
         # todo: 만약에 guideline 내부에 비슷한 문장이 있으면, 법률 검색? 근데 유사도 검색하면 일단은 1개 이상은 있는 거 아닌가
         if len(guideline) > 0:
             logging.info(f"[그린워싱 가능성 존재]")
-
             logging.info(f"[법률 검색 + 쿼리 임베딩]")
-            law = retriever_2nd.invoke(embeddings_model.embed_query(query))
+            law = retriever_2nd.invoke(article)
             context = "\n".join([doc.page_content for doc in law])[:1000]
+
             logging.info(f"[2차 검색된 법률 문서]")
             for i, doc in enumerate(law, 1):
                 logging.info(f"  [{i}] {doc.page_content}...")
@@ -250,16 +249,14 @@ def main():
         logging.info(f"[답변 생성]")
 
         results.append({
-            "sentence": sentence,
-            "query": query,
+            "article": article,
             "context": context,
             "answer": answer
         })
 
     for r in results:
         print("="*80)
-        print(f"문장: {r['sentence']}")
-        print(f"Query: {r['query']}")
+        print(f"Article Preview: {r['article'][:200]}...")
         print(f"Context Preview: {r['context'][:200]}...")
         print(f"Answer:\n{r['answer']}")
         print("="*80)
