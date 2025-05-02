@@ -12,6 +12,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 import get_ko_law
 import model_loader
+import query_processor
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -31,6 +32,7 @@ KEYWORDS = [
 
 
 def load_prompt():
+    # todo: langchain prompt 사용해보기
     with open(PROMPT_PATH, 'r', encoding='utf-8') as f:
         return f.read()
 
@@ -215,16 +217,18 @@ def main():
     소비자의 건강과 환경을 동시에 고려했습니다.
     """
 
-    # 1. 키워드 필터링
+    # 1. 키워드 필터링 + 쿼리 법률 어투
     key_sentences = extract_key_sentences(input)
-    query_list = naturalize_query(key_sentences)
+    query_list = query_processor.legalize_query(
+        naturalize_query(key_sentences)
+    )
 
     results = []
     for idx, (sentence, query) in enumerate(zip(key_sentences, query_list), 1):
         logging.info(f"[문장 처리 시작]")
 
-        logging.info(f"[가이드라인 검색]")
-        guideline = retriever_1st.invoke(query)
+        logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
+        guideline = retriever_1st.invoke(embeddings_model.embed_query(query))
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
 
         logging.info(f"[1차 검색된 가이드라인 문서]")
@@ -235,8 +239,8 @@ def main():
         if len(guideline) > 0:
             logging.info(f"[그린워싱 가능성 존재]")
 
-            logging.info(f"[법률 검색]")
-            law = retriever_2nd.invoke(query)
+            logging.info(f"[법률 검색 + 쿼리 임베딩]")
+            law = retriever_2nd.invoke(embeddings_model.embed_query(query))
             context = "\n".join([doc.page_content for doc in law])[:1000]
             logging.info(f"[2차 검색된 법률 문서]")
             for i, doc in enumerate(law, 1):
@@ -259,6 +263,8 @@ def main():
         print(f"Context Preview: {r['context'][:200]}...")
         print(f"Answer:\n{r['answer']}")
         print("="*80)
+
+    # todo: 어떤 실험 환경이었는지 간단히 정리한 요약 로그 작성 - 모델, 프롬프트 버전, 검색 문서,
 
 
 if __name__ == "__main__":
