@@ -1,5 +1,6 @@
 import re
 import logging
+import pandas as pd
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -33,12 +34,12 @@ def preprocess_articles(test_input):
                 f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
             continue
         # 법률 용어화
-        raw_article = legalize_query(raw_article)
+        raw_article = legalize_query([raw_article])[0]
         # 공백 제거
-        processed.append(raw_article)
+        processed.append({"full_text": raw_article})
 
     logging.info(f"[기사 전처리 완료] {len(processed)}개 문서 처리됨")
-    return processed
+    return pd.Dataframe(processed)
 
 
 def legalize_query(sentences: list[str]) -> list[str]:
