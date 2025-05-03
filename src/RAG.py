@@ -3,7 +3,6 @@ import torch
 
 import get_data
 import model_loader
-import query_processor
 import vectorStore
 from prompts import prompt_v3_cot_fewshot
 
@@ -87,24 +86,6 @@ def run_experiment(model_name, search_strategy: str = "double", num_articles: in
     return model, tokenizer, retriever_1st, retriever_2nd
 
 
-def load_data():
-    # get input data 10개
-    test_input = get_data.load_test_data(5)
-    test_input = test_input.dropna(subset=["full_text"])
-
-    logging.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")
-
-    test_input = query_processor.preprocess_articles(test_input)
-
-    if test_input:
-        logging.info(f"[확인] {test_input[0][:1000]}")
-    else:
-        logging.warning("⚠ 처리된 문서가 없습니다!")
-
-    query = "이 기사 전체가 그린워싱에 해당합니까?"
-    return test_input, query
-
-
 def stepR_llama3Ko():
     logging.info("llama3Ko 모델을 사용한 그린워싱 판별 시작")
 
@@ -115,7 +96,7 @@ def stepR_llama3Ko():
     )
 
     results = []
-    test_input, query = load_data()
+    test_input, query = get_data.load_data()
 
     for idx, row in test_input.iterrows():
         raw_article = row['full_text']

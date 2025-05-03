@@ -1,5 +1,8 @@
+import logging
 import pandas as pd
 from pathlib import Path
+
+import query_processor
 
 test_input_path = Path(__file__).parent.parent / 'data' / \
     'greenwashing' / 'greenwashing_test_input.csv'
@@ -20,3 +23,21 @@ def load_test_data(rows: int = None) -> pd.DataFrame:
 
     df = pd.read_csv(test_input_path, encoding='utf-8')
     return df.head(rows) if rows else df
+
+
+def load_data():
+    # get input data 10개
+    test_input = load_test_data(5)
+    test_input = test_input.dropna(subset=["full_text"])
+
+    logging.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")
+
+    test_input = query_processor.preprocess_articles(test_input)
+
+    if not test_input.empty:
+        logging.info(f"[확인] {test_input['full_text'].iloc[0][:1000]}")
+    else:
+        logging.warning("⚠ 처리된 문서가 없습니다!")
+
+    query = "이 기사 전체가 그린워싱에 해당합니까?"
+    return test_input, query
