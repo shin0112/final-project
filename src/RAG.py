@@ -11,9 +11,11 @@ from prompts import prompt_v3_cot_fewshot
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 def load_prompt():
     # todo: langchain prompt 사용해보기
     return prompt_v3_cot_fewshot.fewShot_prompt
+
 
 def logging_model(model_name, embeddings_model, retriever_strategy, num_articles, prompt_version):
     logging.info(f"[실험 환경]")
@@ -26,7 +28,7 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
 
 def generate_answer(model, tokenizer, query, context):
     prompt = load_prompt().invoke({"query": query, "context": context})
-    
+
     inputs = tokenizer(
         prompt,
         return_tensors="pt",
@@ -63,7 +65,8 @@ def run_experiment(model_name, search_strategy: str = "double", num_articles: in
 
     # 0.2. 쿼리 및 문서 임베딩 모델
     embeddings_model = vectorStore.KoSimCSE()
-    guideline_store = vectorStore.load_or_create_faiss_guideline(embeddings_model)
+    guideline_store = vectorStore.load_or_create_faiss_guideline(
+        embeddings_model)
 
     if search_strategy == "double":
         law_store = vectorStore.load_or_create_faiss_law(embeddings_model)
@@ -165,6 +168,7 @@ def stepR_llama3Ko():
         num_articles=len(test_input),
         prompt_version="v3_cot_fewshot"
     )
+
 
 if __name__ == "__main__":
     stepR_llama3Ko()

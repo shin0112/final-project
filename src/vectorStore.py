@@ -16,8 +16,6 @@ LAW_FAISS_PATH = FAISS_PATH / "law"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
 # PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
 
-
-
 class KoSimCSE:
     def __init__(self, model_name='BM-K/KoSimCSE-roberta', device=None):
         logging.info("KoSimCSE 임베딩 모델 로드 중입니다...")
