@@ -32,6 +32,13 @@ def load_prompt():
     # todo: langchain prompt 사용해보기
     return prompt_v3_cot_fewshot.fewShot_prompt
 
+def logging_model(model_name, embeddings_model, retriever_strategy, num_articles, prompt_version):
+    logging.info(f"[실험 환경]")
+    logging.info(f"  모델: {model_name}")
+    logging.info(f"  쿼리 임베딩 모델: {embeddings_model}")
+    logging.info(f"  검색 전략: {retriever_strategy}")
+    logging.info(f"  검색 문서 수: {num_articles}")
+    logging.info(f"  프롬프트 버전: {prompt_version}")
 
 def load_or_create_faiss_guideline(embeddings_model):
     if GUIDELINE_FAISS_PATH.exists():
@@ -177,6 +184,8 @@ def load_data():
 
 
 def stepR_llama3Ko():
+    logging.info("llama3Ko 모델을 사용한 그린워싱 판별 시작")
+
     # 모델 불러오기
     model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
         model_name="llama3Ko",
@@ -232,8 +241,13 @@ def stepR_llama3Ko():
         print(f"Answer:\n{r['answer']}")
         print("="*80)
 
-    # todo: 어떤 실험 환경이었는지 간단히 정리한 요약 로그 작성 - 모델, 프롬프트 버전, 검색 문서,
-
+    logging_model(
+        model_name="llama3Ko",
+        embeddings_model="KoSimCSE",
+        retriever_strategy="double",
+        num_articles=len(test_input),
+        prompt_version="v3_cot_fewshot"
+    )
 
 if __name__ == "__main__":
     stepR_llama3Ko()
