@@ -6,6 +6,7 @@ src/__pycache__
 src/start.sh
 .env
 logs/
+logs_backup**/
 
 # datasets
 data/
