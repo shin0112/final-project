@@ -49,6 +49,22 @@ examples = [
         3. 해결방안: 자연 유래 성분의 명칭과 비율을 명확히 기재하고, 관련 친환경 인증 마크를 표시해야 합니다.
         """
     },
+    {
+        "query": """
+        H식품은 최근 '클린어스' 캠페인의 일환으로, 자사 제품 포장에 대해 모든 환경 정보를 투명하게 공개하기 시작했다.  
+        제품 패키지에는 사용된 재질, 재활용 가능 여부, 폐기 시 유의사항 등이 구체적으로 명시되어 있으며,  
+        환경부로부터 인증받은 '저탄소 제품' 마크도 부착되어 있다.  
+        캠페인 웹페이지에는 관련 인증서 사본과 함께, 전체 제품군 중 몇 %가 친환경 포장재로 전환되었는지도 설명돼 있다.  
+        H식품은 “환경적 책임을 다하기 위한 첫 걸음으로, 정확한 정보 제공에 최선을 다하겠다”고 밝혔다.
+        """,
+        "answer": """
+        1. 판단: 그린워싱 아님  
+        2. 근거: 구체적인 수치와 인증 마크를 통해 주장에 대한 근거를 명확히 제시했으며,  
+        사용된 용어도 과장이나 모호함 없이 사실 기반으로 구성돼 있습니다.  
+        3. 해결방안: 현재로선 추가적인 개선이 필요하지 않으며, 지속적으로 최신 정보를 제공하는 노력이 바람직합니다.
+        """
+    }
+
 ]
 
 base_prompt = PromptTemplate(
@@ -56,14 +72,9 @@ base_prompt = PromptTemplate(
     input_variables=["query", "context"],
 )
 
-# 예시와 base prompt 모두 동일한 키 사용
-example_prompt = PromptTemplate.from_template(
-    "질문:\n{query}\n답변:\n{answer}\n"
-)
-
 fewShot_prompt = FewShotPromptTemplate(
     examples=examples,
-    example_prompt=example_prompt,
+    example_prompt=base_prompt,
     suffix=template,
     input_variables=["query", "context"],
 )
