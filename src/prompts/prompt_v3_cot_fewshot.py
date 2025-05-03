@@ -58,7 +58,7 @@ base_prompt = PromptTemplate(
 
 # 예시와 base prompt 모두 동일한 키 사용
 example_prompt = PromptTemplate.from_template(
-    "{query}\n{context}\n"
+    "질문:\n{query}\n답변:\n{answer}\n"
 )
 
 fewShot_prompt = FewShotPromptTemplate(

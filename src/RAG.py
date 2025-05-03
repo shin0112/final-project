@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO,
 def load_prompt(version="fewshot"):
     if version == "base":
         return prompt_v3_cot_fewshot.base_prompt
-    elif version == "example":
+    elif version == "fewshot":
         return prompt_v3_cot_fewshot.fewShot_prompt
 
 
@@ -27,8 +27,10 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
     logging.info(f"  프롬프트 버전: {prompt_version}")
 
 
-def generate_answer(model, tokenizer, query, context):
-    prompt = load_prompt().invoke({"query": query, "context": context})
+def generate_answer(model, tokenizer, query, context, prompt_version="fewshot"):
+    prompt_template = load_prompt(prompt_version)
+    prompt = prompt_template.format(query=query, context=context)
+    logging.info(f"[프롬프트] 설정 확인: {prompt[:100]}")
 
     inputs = tokenizer(
         prompt,
@@ -48,7 +50,7 @@ def generate_answer(model, tokenizer, query, context):
             max_new_tokens=256,
             temperature=0.5,
             top_p=0.8,
-            do_sample=False,
+            do_sample=True,
             repetition_penalty=1.15,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id
@@ -108,7 +110,7 @@ def stepR_llama3Ko():
 
         article = raw_article.strip()
 
-        logging.info(f"[기사 처리 시작]")
+        logging.info(f"[기사 처리 시작] {idx} / {len(test_input)}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = retriever_1st.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
@@ -151,6 +153,8 @@ def stepR_llama3Ko():
         num_articles=len(test_input),
         prompt_version="v3_cot_fewshot"
     )
+
+    logging.info("llama3Ko 모델을 사용한 그린워싱 판별 종료")
 
 
 if __name__ == "__main__":
