@@ -51,18 +51,16 @@ examples = [
     },
 ]
 
-default_prompt = PromptTemplate(
+base_prompt = PromptTemplate(
     template=template,
     input_variables=["query", "context"],
 )
 
-example_prompt = PromptTemplate.from_template(
-    "Question:\n{question}\nAnswer:\n{answer}"
-)
-
 fewShot_prompt = FewShotPromptTemplate(
     examples=examples,
-    example_prompt=example_prompt,
+    example_prompt=PromptTemplate.from_template(
+    "Question:\n{question}\nAnswer:\n{answer}"
+),
     suffix="Question:\n{question}\nAnswer:\n{answer}",
     input_variables=["query", "context"],
 )

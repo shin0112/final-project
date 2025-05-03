@@ -14,6 +14,7 @@ import get_ko_law
 import get_data
 import model_loader
 import query_processor
+from prompts import prompt_v3_cot_fewshot
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -24,13 +25,12 @@ FAISS_PATH = Path(__file__).parent.parent / 'data' / 'faiss_index'
 GUIDELINE_FAISS_PATH = FAISS_PATH / "guideline"
 LAW_FAISS_PATH = FAISS_PATH / "law"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
-PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
+# PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
 
 
 def load_prompt():
     # todo: langchain prompt 사용해보기
-    with open(PROMPT_PATH, 'r', encoding='utf-8') as f:
-        return f.read()
+    return prompt_v3_cot_fewshot.fewShot_prompt
 
 
 def load_or_create_faiss_guideline(embeddings_model):
@@ -101,7 +101,8 @@ def load_or_create_faiss_law(embeddings_model):
 
 
 def generate_answer(model, tokenizer, query, context):
-    prompt = load_prompt().format(query=query, context=context)
+    prompt = load_prompt().invoke({"query": query, "context": context})
+    
     inputs = tokenizer(
         prompt,
         return_tensors="pt",
