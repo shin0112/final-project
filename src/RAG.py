@@ -12,9 +12,11 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def load_prompt():
-    # todo: langchain prompt 사용해보기
-    return prompt_v3_cot_fewshot.fewShot_prompt
+def load_prompt(version="fewshot"):
+    if version == "base":
+        return prompt_v3_cot_fewshot.base_prompt
+    elif version == "example":
+        return prompt_v3_cot_fewshot.fewShot_prompt
 
 
 def logging_model(model_name, embeddings_model, retriever_strategy, num_articles, prompt_version):

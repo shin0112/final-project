@@ -39,7 +39,7 @@ def preprocess_articles(test_input):
         processed.append({"full_text": raw_article})
 
     logging.info(f"[기사 전처리 완료] {len(processed)}개 문서 처리됨")
-    return pd.Dataframe(processed)
+    return pd.DataFrame(processed)
 
 
 def legalize_query(sentences: list[str]) -> list[str]:
