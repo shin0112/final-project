@@ -26,42 +26,11 @@ LAW_FAISS_PATH = FAISS_PATH / "law"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
 PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
 
-KEYWORDS = [
-    "친환경", "지속 가능", "재활용", "탄소 중립", "인증", "에코", "그린", "지속 가능한",
-    "환경 보호", "자원 절약", "친환경 소재", "친환경 제품", "지속 가능한 발전"
-]
-
 
 def load_prompt():
     # todo: langchain prompt 사용해보기
     with open(PROMPT_PATH, 'r', encoding='utf-8') as f:
         return f.read()
-
-
-class KoSimCSE:
-    def __init__(self, model_name='BM-K/KoSimCSE-roberta', device=None):
-        logging.info("KoSimCSE 임베딩 모델 로드 중입니다...")
-        self.device = "cuda"
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name).to(self.device)
-        self.model.eval()
-        logging.info("KoSimCSE 모델 로드 완료!")
-
-    def __call__(self, text: str) -> list[float]:
-        return self.embed_query(text)
-
-    def embed_documents(self, texts) -> list[list[float]]:
-        inputs = self.tokenizer(
-            texts, padding=True, truncation=True, return_tensors="pt").to(self.device)
-        with torch.no_grad():
-            outputs = self.model(**inputs, return_dict=True)
-            embeddings = outputs.last_hidden_state[:, 0]  # [CLS] 토큰 가져오기
-            embeddings = embeddings / \
-                embeddings.norm(dim=1, keepdim=True)  # normalize
-        return embeddings.cpu().tolist()
-
-    def embed_query(self, text: str) -> list[float]:
-        return self.embed_documents([text])[0]
 
 
 def load_or_create_faiss_guideline(embeddings_model):
@@ -161,59 +130,60 @@ def generate_answer(model, tokenizer, query, context):
     return output_text[len(prompt):].strip()
 
 
-def naturalize_query(sentences) -> str:
-    result = [f"'{s}'라는 문장은 그린워싱 가능성이 있는 표현인가요?" for s in sentences]
-    logging.info(f"[자연어 처리] 다음 query 생성")
-    for i, q in enumerate(result, 1):
-        logging.info(f"{i}. {q}")
-    return result
-
-
-def extract_key_sentences(text: str, max_sentences: int = 5):
-    # 문장 단위 분리
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    # 키워드 점수 계산 및 정렬
-    scores = [(s, sum(k in s for k in KEYWORDS)) for s in sentences]
-    scores.sort(key=lambda x: x[1], reverse=True)
-    selected = [sentence for sentence,
-                score in scores if score > 0][:max_sentences]
-
-    logging.info(f"[문장 추출] 다음 문장들이 추출됨. 문장 수 = {len(selected)}")
-    for i, s in enumerate(selected, 1):
-        logging.info(f"{i}. {s}")
-
-    return selected
-
-
-def main():
+def run_experiment(model_name, search_strategy: str = "double", num_articles: int = 10):
     # 0. 초기화
-    embeddings_model = KoSimCSE()
+    # 0.1. LLM 모델
+    model, tokenizer = model_loader.load_model(model_name)
+    tokenizer.pad_token = tokenizer.eos_token  # padding 문제 방지
+
+    # 0.2. 쿼리 및 문서 임베딩 모델
+    embeddings_model = model_loader.KoSimCSE()
     guideline_store = load_or_create_faiss_guideline(embeddings_model)
-    law_store = load_or_create_faiss_law(embeddings_model)
+
+    if search_strategy == "double":
+        law_store = load_or_create_faiss_law(embeddings_model)
+        retriever_2nd = law_store.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 2}
+        )
+    else:
+        retriever_2nd = None
 
     retriever_1st = guideline_store.as_retriever(
         search_type="similarity",
         search_kwargs={"k": 2}
     )
-    retriever_2nd = law_store.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 2}
-    )
 
-    # 모델 불러오기
-    model, tokenizer = model_loader.llama3Ko_loader()
-    tokenizer.pad_token = tokenizer.eos_token
+    return model, tokenizer, retriever_1st, retriever_2nd
 
+
+def load_data():
     # get input data 10개
     test_input = get_data.load_test_data(10)
     test_input = test_input.dropna(subset=["full_text"])
-    test_input = test_input[test_input["full_text"].apply(
-        lambda x: isinstance(x, str) and x.strip() != "")]
+
     logging.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")
-    logging.info(f"[확인] {test_input.iloc[0]['full_text']}")
+
+    test_input = query_processor.preprocess_articles(test_input)
+
+    if test_input:
+        logging.info(f"[확인] {test_input[0][:1000]}")
+    else:
+        logging.warning("⚠ 처리된 문서가 없습니다!")
+
+    query = "이 기사 전체가 그린워싱에 해당합니까?"
+    return test_input, query
+
+
+def stepR_llama3Ko():
+    # 모델 불러오기
+    model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
+        model_name="llama3Ko",
+        search_strategy="double"
+    )
 
     results = []
-    query = "이 기사 전체가 그린워싱에 해당합니까?"
+    test_input, query = load_data()
 
     for idx, row in test_input.iterrows():
         raw_article = row['full_text']
@@ -246,7 +216,7 @@ def main():
                 logging.info(f"  [{i}] {doc.page_content}...")
 
         answer = generate_answer(model, tokenizer, query, context)
-        logging.info(f"[답변 생성]")
+        logging.info(f"[답변 생성] {answer}")
 
         results.append({
             "article": article,
@@ -265,4 +235,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    stepR_llama3Ko()
