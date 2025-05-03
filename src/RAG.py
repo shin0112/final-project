@@ -89,7 +89,7 @@ def run_experiment(model_name, search_strategy: str = "double", num_articles: in
 
 
 def double_llama3Ko():
-    logging.info("llama3Ko 모델을 사용한 그린워싱 판별 시작")
+    logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 시작")
 
     # 모델 불러오기
     model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
@@ -159,8 +159,72 @@ def double_llama3Ko():
         prompt_version="v3_cot_fewshot"
     )
 
-    logging.info("llama3Ko 모델을 사용한 그린워싱 판별 종료")
+    logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 종료")
+
+
+def single_llama3Ko():
+    logging.info("llama3Ko 모델과 single retriever을 사용한 그린워싱 판별 시작")
+
+    # 모델 불러오기
+    model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
+        model_name="llama3Ko",
+        search_strategy="double"
+    )
+
+    results = []
+    test_input = get_data.load_data()
+
+    for idx, row in test_input.iterrows():
+        raw_article = row['full_text']
+
+        if not isinstance(raw_article, str):
+            logging.warning(
+                f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
+            continue
+
+        article = raw_article.strip()
+
+        logging.info(f"[기사 처리 시작] {idx} / {len(test_input)}")
+        logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
+        guideline = retriever_1st.invoke(article)
+        context = "\n".join([doc.page_content for doc in guideline])[:1000]
+
+        logging.info(f"[1차 검색된 가이드라인 문서]")
+        for i, doc in enumerate(guideline, 1):
+            logging.info(f"  [{i}] {doc.page_content}...")
+
+        answer = generate_answer(
+            model=model,
+            tokenizer=tokenizer,
+            query=article,
+            context=context,
+        )
+        logging.info(f"[답변 생성] {answer}")
+
+        results.append({
+            "article": article,
+            "context": context,
+            "answer": answer
+        })
+
+    for r in results:
+        print("="*80)
+        print(f"Article Preview: {r['article'][:200]}...")
+        print(f"Context Preview: {r['context'][:200]}...")
+        print(f"Answer:\n{r['answer']}")
+        print("="*80)
+
+    logging_model(
+        model_name="llama3Ko",
+        embeddings_model="KoSimCSE",
+        retriever_strategy="double",
+        num_articles=len(test_input),
+        prompt_version="v3_cot_fewshot"
+    )
+
+    logging.info("llama3Ko 모델과 single retriever을 사용한 그린워싱 판별 종료")
 
 
 if __name__ == "__main__":
     double_llama3Ko()
+    single_llama3Ko()
