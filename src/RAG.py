@@ -14,6 +14,7 @@ import get_ko_law
 import get_data
 import model_loader
 import query_processor
+import vectorStore
 from prompts import prompt_v3_cot_fewshot
 
 # Configure logging
@@ -145,7 +146,7 @@ def run_experiment(model_name, search_strategy: str = "double", num_articles: in
     tokenizer.pad_token = tokenizer.eos_token  # padding 문제 방지
 
     # 0.2. 쿼리 및 문서 임베딩 모델
-    embeddings_model = model_loader.KoSimCSE()
+    embeddings_model = vectorStore.KoSimCSE()
     guideline_store = load_or_create_faiss_guideline(embeddings_model)
 
     if search_strategy == "double":
