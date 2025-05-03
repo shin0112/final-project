@@ -15,6 +15,17 @@ from mistral_common.protocol.instruct.request import ChatCompletionRequest
 login(token=os.getenv("HUGGINGFACE_TOKEN"))
 
 
+def load_model(model_name):
+    if model_name == "KoAlpaca":
+        return koalpaca_loader()
+    elif model_name == "Mistral":
+        return mistral_loader()
+    elif model_name == "llama3Ko":
+        return llama3Ko_loader()
+    else:
+        raise ValueError(f"지원하지 않는 모델입니다: {model_name}")
+
+
 def koalpaca_loader():
     model_name = "beomi/KoAlpaca-Polyglot-5.8B"
     logging.info("[모델 초기화] KoAlpaca-Polyglot-5.8B")
