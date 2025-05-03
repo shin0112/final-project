@@ -3,6 +3,9 @@
 .vscode
 config/
 src/__pycache__
+src/start.sh
+.env
+logs/
 
 # datasets
 data/
