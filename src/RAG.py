@@ -30,7 +30,7 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
 def generate_answer(model, tokenizer, query, context, prompt_version="fewshot"):
     prompt_template = load_prompt(prompt_version)
     prompt = prompt_template.format(query=query, context=context)
-    logging.info(f"[프롬프트] 설정 확인: {prompt[:100]}")
+    logging.info(f"[프롬프트] 설정 확인: {prompt[:5]}")
 
     inputs = tokenizer(
         prompt,
@@ -47,7 +47,7 @@ def generate_answer(model, tokenizer, query, context, prompt_version="fewshot"):
         output_ids = model.generate(
             input_ids,
             attention_mask=attention_mask,
-            max_new_tokens=256,
+            max_new_tokens=512,
             temperature=0.5,
             top_p=0.8,
             do_sample=True,
@@ -98,7 +98,7 @@ def double_llama3Ko():
     )
 
     results = []
-    test_input, query = get_data.load_data()
+    test_input = get_data.load_data()
 
     for idx, row in test_input.iterrows():
         raw_article = row['full_text']
@@ -130,7 +130,12 @@ def double_llama3Ko():
             for i, doc in enumerate(law, 1):
                 logging.info(f"  [{i}] {doc.page_content}...")
 
-        answer = generate_answer(model, tokenizer, query, context)
+        answer = generate_answer(
+            model=model,
+            tokenizer=tokenizer,
+            query=article,
+            context=context,
+        )
         logging.info(f"[답변 생성] {answer}")
 
         results.append({

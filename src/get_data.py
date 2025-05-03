@@ -39,5 +39,4 @@ def load_data():
     else:
         logging.warning("⚠ 처리된 문서가 없습니다!")
 
-    query = "이 기사 전체가 그린워싱에 해당합니까?"
-    return test_input, query
+    return test_input

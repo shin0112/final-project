@@ -64,7 +64,6 @@ examples = [
         3. 해결방안: 현재로선 추가적인 개선이 필요하지 않으며, 지속적으로 최신 정보를 제공하는 노력이 바람직합니다.
         """
     }
-
 ]
 
 base_prompt = PromptTemplate(
@@ -72,9 +71,14 @@ base_prompt = PromptTemplate(
     input_variables=["query", "context"],
 )
 
+example_prompt = PromptTemplate(
+    template="질문:\n{query}\n답변:\n{answer}\n",
+    input_variables=["query", "answer"]
+)
+
 fewShot_prompt = FewShotPromptTemplate(
     examples=examples,
-    example_prompt=base_prompt,
+    example_prompt=example_prompt,
     suffix=template,
     input_variables=["query", "context"],
 )
