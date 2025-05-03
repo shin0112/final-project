@@ -5,7 +5,7 @@ from pathlib import Path
 import query_processor
 
 test_input_path = Path(__file__).parent.parent / 'data' / \
-    'greenwashing' / 'greenwashing_test_input.csv'
+    'greenwashing' / 'greenwashing_test_input_v2.csv'
 
 
 def load_test_data(rows: int = None) -> pd.DataFrame:

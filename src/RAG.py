@@ -88,7 +88,7 @@ def run_experiment(model_name, search_strategy: str = "double", num_articles: in
     return model, tokenizer, retriever_1st, retriever_2nd
 
 
-def stepR_llama3Ko():
+def double_llama3Ko():
     logging.info("llama3Ko 모델을 사용한 그린워싱 판별 시작")
 
     # 모델 불러오기
@@ -158,4 +158,4 @@ def stepR_llama3Ko():
 
 
 if __name__ == "__main__":
-    stepR_llama3Ko()
+    double_llama3Ko()
