@@ -56,11 +56,14 @@ base_prompt = PromptTemplate(
     input_variables=["query", "context"],
 )
 
+# 예시와 base prompt 모두 동일한 키 사용
+example_prompt = PromptTemplate.from_template(
+    "{query}\n{context}\n"
+)
+
 fewShot_prompt = FewShotPromptTemplate(
     examples=examples,
-    example_prompt=PromptTemplate.from_template(
-    "Question:\n{question}\nAnswer:\n{answer}"
-),
-    suffix="Question:\n{question}\nAnswer:\n{answer}",
+    example_prompt=example_prompt,
+    suffix=template,
     input_variables=["query", "context"],
 )
