@@ -125,10 +125,10 @@ def generate_answer(model, tokenizer, query, context):
         output_ids = model.generate(
             input_ids,
             attention_mask=attention_mask,
-            max_new_tokens=512,
+            max_new_tokens=256,
             temperature=0.5,
             top_p=0.8,
-            do_sample=True,
+            do_sample=False,
             repetition_penalty=1.15,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id
@@ -167,7 +167,7 @@ def run_experiment(model_name, search_strategy: str = "double", num_articles: in
 
 def load_data():
     # get input data 10개
-    test_input = get_data.load_test_data(10)
+    test_input = get_data.load_test_data(5)
     test_input = test_input.dropna(subset=["full_text"])
 
     logging.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")
