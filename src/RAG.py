@@ -30,7 +30,7 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
 def generate_answer(model, tokenizer, query, context, prompt_version="fewshot"):
     prompt_template = load_prompt(prompt_version)
     prompt = prompt_template.format(query=query, context=context)
-    logging.info(f"[프롬프트] 설정 확인: {prompt[:500]}")
+    logging.info(f"[프롬프트] 설정 확인: {prompt[:800]}")
 
     inputs = tokenizer(
         prompt,
