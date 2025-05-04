@@ -1,22 +1,19 @@
 from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts.few_shot import FewShotPromptTemplate
 
-template = """
+role = """
 당신은 '그린워싱 판별 전문가'입니다. 
 
 당신의 목표는 주어진 문장과 가이드라인을 읽고 그린워싱의 유무를 판단하는 것입니다.
 양식을 정확히 따르고, 예시를 복사하지 말고 반드시 새로운 답변을 작성하세요.
+"""
 
+cot = """
 [사고 절차(CoT)]
 1. 먼저, 문장에서 친환경성을 주장하는 표현을 찾아 언급하세요.
 2. 그 표현이 가이드라인에 따라 허위, 과장, 오해 소지가 있는지 단계적으로 검토하세요.
 3. 그린워싱일 경우, 어떤 법률 근거에 의해 판단되는지 검토하세요.
 4. 최종적으로 판단, 근거, 해결방안을 작성하세요.
-
-{query}가 그린워싱 가능성이 있는 기사인지 다음 가이드라인을 읽고 판별해주세요.
-
-가이드라인은 다음과 같습니다.
-{context}
 """
 
 examples = [
@@ -71,12 +68,22 @@ examples_text = ""
 for example in examples:
     examples_text += f"query: {example['query']}\answer: {example['answer']}\n\n"
 
+goal = """
+{query}가 그린워싱 가능성이 있는 기사인지 다음 가이드라인을 읽고 판별해주세요.
+
+가이드라인은 다음과 같습니다.
+{context}
+"""
+
+template = role + cot + goal
+example_template = role + cot + examples_text + goal
+
 base_prompt = PromptTemplate(
     template=template,
     input_variables=["query", "context"],
 )
 
 fewShot_prompt = PromptTemplate(
-    template=template + "\n예시\n" + examples_text,
+    template=example_template,
     input_variables=["query", "context"],
 )
