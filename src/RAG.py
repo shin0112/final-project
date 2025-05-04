@@ -30,7 +30,7 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
 def generate_answer(model, tokenizer, query, context, prompt_version="fewshot"):
     prompt_template = load_prompt(prompt_version)
     prompt = prompt_template.format(query=query, context=context)
-    logging.info(f"[프롬프트] 설정 확인: {prompt[:5]}")
+    logging.info(f"[프롬프트] 설정 확인: {prompt[:500]}")
 
     inputs = tokenizer(
         prompt,
@@ -144,6 +144,7 @@ def double_llama3Ko():
             context=context,
         )
         logging.info(f"[답변 생성] {answer}")
+        logging.info(f"[답변 종료]")
 
         results.append({
             "article": article,
@@ -221,6 +222,7 @@ def double_llama3Ko_not_legalize():
             context=context,
         )
         logging.info(f"[답변 생성] {answer}")
+        logging.info(f"[답변 종료]")
 
         results.append({
             "article": article,
@@ -286,6 +288,7 @@ def single_llama3Ko():
             context=context,
         )
         logging.info(f"[답변 생성] {answer}")
+        logging.info(f"[답변 종료]")
 
         results.append({
             "article": article,
@@ -351,6 +354,7 @@ def rerank_llama3Ko():
             context=context,
         )
         logging.info(f"[답변 생성] {answer}")
+        logging.info(f"[답변 종료]")
 
         results.append({
             "article": article,
