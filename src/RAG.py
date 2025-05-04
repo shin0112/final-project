@@ -117,6 +117,7 @@ def double_llama3Ko():
         article = raw_article.strip()
 
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
+        logging.info(f"[처리 기사 내용] {article}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = retriever_1st.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
@@ -193,6 +194,7 @@ def double_llama3Ko_not_legalize():
         article = raw_article.strip()
 
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
+        logging.info(f"[처리 기사 내용] {article}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = retriever_1st.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
@@ -268,6 +270,7 @@ def single_llama3Ko():
         article = raw_article.strip()
 
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
+        logging.info(f"[처리 기사 내용] {article}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = retriever_1st.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
@@ -332,6 +335,7 @@ def rerank_llama3Ko():
         article = raw_article.strip()
 
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
+        logging.info(f"[처리 기사 내용] {article}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = retriever.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
@@ -373,6 +377,7 @@ def rerank_llama3Ko():
 
 
 if __name__ == "__main__":
+    double_llama3Ko_not_legalize()
     double_llama3Ko()
     single_llama3Ko()
     rerank_llama3Ko()
