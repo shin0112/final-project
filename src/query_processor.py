@@ -22,7 +22,7 @@ ENVIRONMENT_TERM_MAPPING = {
 }
 
 
-def preprocess_articles(test_input):
+def preprocess_articles(test_input, legalize=True):
     processed = []
 
     for idx, row in test_input.iterrows():
@@ -34,7 +34,8 @@ def preprocess_articles(test_input):
                 f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
             continue
         # 법률 용어화
-        raw_article = legalize_query([raw_article])[0]
+        if legalize:
+            raw_article = legalize_query([raw_article])[0]
         # 공백 제거
         processed.append({"full_text": raw_article})
 
