@@ -73,9 +73,7 @@ def run_experiment(model_name,
     # 0.2. 쿼리 및 문서 임베딩 모델
     embeddings_model = embeddings_model
     guideline_store = vectorStore.load_or_create_faiss_guideline(
-        embeddings_model,
-        embeddings_model_name,
-    )
+        embeddings_model)
 
     if search_strategy == "double":
         law_store = vectorStore.load_or_create_faiss_law(embeddings_model)
@@ -100,6 +98,8 @@ def double_llama3Ko():
     # 모델 불러오기
     model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
         model_name="llama3Ko",
+        embeddings_model=vectorStore.KoSimCSE(),
+        embeddings_model_name="KoSimCSE",
         search_strategy="double"
     )
 
@@ -116,7 +116,7 @@ def double_llama3Ko():
 
         article = raw_article.strip()
 
-        logging.info(f"[기사 처리 시작] {idx} / {len(test_input)}")
+        logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = retriever_1st.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
@@ -191,7 +191,7 @@ def single_llama3Ko():
 
         article = raw_article.strip()
 
-        logging.info(f"[기사 처리 시작] {idx} / {len(test_input)}")
+        logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = retriever_1st.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
@@ -255,7 +255,7 @@ def rerank_llama3Ko():
 
         article = raw_article.strip()
 
-        logging.info(f"[기사 처리 시작] {idx} / {len(test_input)}")
+        logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = retriever.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
