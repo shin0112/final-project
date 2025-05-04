@@ -236,12 +236,11 @@ def rerank_llama3Ko():
     logging.info("llama3Ko 모델과 rerank retriever을 사용한 그린워싱 판별 시작")
 
     # 모델 불러오기
-    model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
-        model_name="llama3Ko",
-        embeddings_model=vectorStore.BgeReranker(),
-        embeddings_model_name="MsMarcoDistilbert",
-        search_strategy="double"
-    )
+    model, tokenizer = model_loader.load_model("llama3Ko")
+    tokenizer.pad_token = tokenizer.eos_token
+
+    reranker = vectorStore.BgeReranker()
+    retriever = reranker.compression_retriever
 
     results = []
     test_input = get_data.load_data()
@@ -258,7 +257,7 @@ def rerank_llama3Ko():
 
         logging.info(f"[기사 처리 시작] {idx} / {len(test_input)}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
-        guideline = retriever_1st.invoke(article)
+        guideline = retriever.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
 
         logging.info(f"[1차 검색된 가이드라인 문서]")
