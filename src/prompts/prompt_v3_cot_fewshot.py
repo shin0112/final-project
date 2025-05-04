@@ -66,7 +66,12 @@ examples = [
 
 examples_text = ""
 for example in examples:
-    examples_text += f"query: {example['query']}\answer: {example['answer']}\n\n"
+    examples_text += (
+        f"==================== 예시 시작 ====================\n"
+        f"query: {example['query']}\n"
+        f"answer: {example['answer']}\n"
+        f"==================== 예시 끝 ====================\n\n"
+    )
 
 goal = """
 {query}가 그린워싱 가능성이 있는 기사인지 다음 가이드라인을 읽고 판별해주세요.
@@ -76,7 +81,8 @@ goal = """
 """
 
 template = role + cot + goal
-example_template = role + cot + examples_text + goal
+example_template = role + cot + examples_text + \
+    '위 예시는 참고용입니다. 이제 실제 기사에 대한 분석을 시작하세요.\n\n' + goal
 
 base_prompt = PromptTemplate(
     template=template,
