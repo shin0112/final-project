@@ -16,16 +16,9 @@ import get_ko_law
 FAISS_PATH = Path(__file__).parent.parent / 'data' / 'faiss_index'
 GUIDELINE_FAISS_PATH = FAISS_PATH / "guideline"
 LAW_FAISS_PATH = FAISS_PATH / "law"
+RERANK_FAISS_PATH = FAISS_PATH / "rerank"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
 # PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
-
-
-def get_faiss_paths(embedding_model_name: str):
-    base_path = FAISS_PATH / embedding_model_name.replace("/", "_")
-    return {
-        "guideline": base_path / "guideline",
-        "law": base_path / "law"
-    }
 
 
 class KoSimCSE:
@@ -80,16 +73,11 @@ class MsMarcoDistilbert:
         return self.embed_documents([text])[0]
 
 
-def load_or_create_faiss_guideline(embeddings_model, embedding_model_name):
-    paths = get_faiss_paths(embedding_model_name)
-    guideline_path = paths["guideline"]
-    law_path = paths["law"]
-
-    if guideline_path.exists():
-        logging.info(
-            f"임베딩 모델 {embedding_model_name}을 사용하여 FAISS 인덱스 로드를 시작합니다...")
+def load_or_create_faiss_guideline(embeddings_model):
+    if GUIDELINE_FAISS_PATH.exists():
+        logging.info("FAISS 인덱스를 로드 중입니다...")
         guideline_store = FAISS.load_local(
-            guideline_path,
+            GUIDELINE_FAISS_PATH,
             embeddings_model,
             allow_dangerous_deserialization=True
         )
@@ -133,22 +121,18 @@ def load_or_create_faiss_guideline(embeddings_model, embedding_model_name):
         FAISS_PATH.mkdir(parents=True, exist_ok=True)
         GUIDELINE_FAISS_PATH.mkdir(parents=True, exist_ok=True)
         LAW_FAISS_PATH.mkdir(parents=True, exist_ok=True)
-        guideline_path.parent.mkdir(parents=True, exist_ok=True)
-        guideline_store.save_local(guideline_path)
-        law_store.save_local(law_path)
+        guideline_store.save_local(GUIDELINE_FAISS_PATH)
+        law_store.save_local(LAW_FAISS_PATH)
 
         logging.info("FAISS 인덱스가 저장되었습니다!")
 
     return guideline_store
 
 
-def load_or_create_faiss_law(embeddings_model, embedding_model_name):
-    paths = get_faiss_paths(embedding_model_name)
-    law_path = paths["law"]
-
+def load_or_create_faiss_law(embeddings_model):
     logging.info("FAISS 인덱스를 로드 중입니다...")
     law_store = FAISS.load_local(
-        law_path,
+        LAW_FAISS_PATH,
         embeddings_model,
         allow_dangerous_deserialization=True
     )
@@ -156,24 +140,62 @@ def load_or_create_faiss_law(embeddings_model, embedding_model_name):
     return law_store
 
 
-class BgeReranker:
-    model = HuggingFaceCrossEncoder(
-        model_name='BAAI/bge-reranker-v2-m3', device='cuda')
-    compressor = CrossEncoderReranker(
-        model=model,
-        search_kwargs={"k": 3},
-    )
-    compression_retriever = ContextualCompressionRetriever(
-        base_compressor=compressor,
-        base_retriever=load_or_create_faiss_guideline(MsMarcoDistilbert.as_retriever(
-            search_kwargs={"k": 10}
-        )),
-        return_source_documents=True,
-        search_kwargs={"k": 3},
-    )
+def load_or_create_faiss_guideline_rerank(embeddings_model):
+    if RERANK_FAISS_PATH.exists():
+        logging.info("RERANK용 FAISS 인덱스를 로드 중입니다...")
+        store = FAISS.load_local(
+            RERANK_FAISS_PATH,
+            embeddings_model,
+            allow_dangerous_deserialization=True
+        )
+        logging.info("RERANK용 FAISS 인덱스 로드가 완료되었습니다!")
+    else:
+        logging.info("한국 가이드라인 및 법률 문서 로드 중입니다...")
+        ko_guideline_docs_list = get_ko_law.get_ko_guideline()
+        ko_law_docs_list = get_ko_law.get_ko_law()
 
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200,
+            length_function=len,
+        )
+
+        logging.info("문서를 분할 중입니다...")
+        all_docs_split = [
+            chunk for docs in (ko_guideline_docs_list + ko_law_docs_list)
+            for chunk in text_splitter.split_documents(docs)
+        ]
+        logging.info("문서 분할 완료!")
+
+        store = FAISS.from_documents(
+            documents=all_docs_split,
+            embedding=embeddings_model,
+            distance_strategy=DistanceStrategy.COSINE
+        )
+
+        RERANK_FAISS_PATH.mkdir(parents=True, exist_ok=True)
+        store.save_local(RERANK_FAISS_PATH)
+
+        logging.info("RERANK용 FAISS 인덱스 저장 완료!")
+
+    return store
+
+
+class BgeReranker:
     def __init__(self):
         logging.info("BgeReranker 모델 로드 중입니다...")
-        self.compressor = BgeReranker.compressor
-        self.compression_retriever = BgeReranker.compression_retriever
+        self.model = HuggingFaceCrossEncoder(
+            model_name='BAAI/bge-reranker-v2-m3', device='cuda')
+        self.compressor = CrossEncoderReranker(
+            model=self.model,
+            search_kwargs={"k": 3},
+        )
+        self.compression_retriever = ContextualCompressionRetriever(
+            base_compressor=self.compressor,
+            base_retriever=load_or_create_faiss_guideline_rerank(
+                MsMarcoDistilbert()
+            ).as_retriever(search_kwargs={"k": 10}),
+            return_source_documents=True,
+            search_kwargs={"k": 3},
+        )
         logging.info("BgeReranker 모델 로드 완료!")
