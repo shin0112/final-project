@@ -185,10 +185,9 @@ class BgeReranker:
     def __init__(self):
         logging.info("BgeReranker 모델 로드 중입니다...")
         self.model = HuggingFaceCrossEncoder(
-            model_name='BAAI/bge-reranker-v2-m3', device='cuda')
+            model_name='BAAI/bge-reranker-v2-m3')
         self.compressor = CrossEncoderReranker(
             model=self.model,
-            search_kwargs={"k": 3},
         )
         self.compression_retriever = ContextualCompressionRetriever(
             base_compressor=self.compressor,
