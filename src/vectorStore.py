@@ -145,7 +145,7 @@ def load_or_create_faiss_law(embeddings_model):
     return law_store
 
 
-def load_or_create_faiss_guideline_rerank(embeddings_model):
+def load_or_create_faiss_rerank(embeddings_model):
     if RERANK_FAISS_PATH.exists():
         logging.info("RERANK용 FAISS 인덱스를 로드 중입니다...")
         store = FAISS.load_local(
@@ -251,7 +251,7 @@ class BgeReranker:
         )
         self.compression_retriever = ContextualCompressionRetriever(
             base_compressor=self.compressor,
-            base_retriever=load_or_create_faiss_guideline_rerank(
+            base_retriever=load_or_create_faiss_rerank(
                 MsMarcoDistilbert()
             ).as_retriever(search_kwargs={"k": 10}),
             return_source_documents=True,
