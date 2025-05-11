@@ -1,5 +1,6 @@
 import logging
 import torch
+import sys
 
 import get_data
 import model_loader
@@ -7,8 +8,12 @@ import vectorStore
 from prompts import prompt_v3_cot_fewshot
 
 # Configure logging
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+
 logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[logging.StreamHandler(sys.stdout)])
 
 
 def load_prompt(version="fewshot"):
@@ -170,6 +175,85 @@ def double_llama3Ko():
     logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 종료")
 
 
+def double_llama3Ko_base():
+    logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 시작 + few-shot 아님")
+
+    # 모델 불러오기
+    model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
+        model_name="llama3Ko",
+        embeddings_model=vectorStore.KoSimCSE(),
+        embeddings_model_name="KoSimCSE",
+        search_strategy="double"
+    )
+
+    results = []
+    test_input = get_data.load_data()
+
+    for idx, row in test_input.iterrows():
+        raw_article = row['full_text']
+
+        if not isinstance(raw_article, str):
+            logging.warning(
+                f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
+            continue
+
+        article = raw_article.strip()
+
+        logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
+        logging.info(f"[처리 기사 내용] {article}")
+        logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
+        guideline = retriever_1st.invoke(article)
+        context = "\n".join([doc.page_content for doc in guideline])[:1000]
+
+        logging.info(f"[1차 검색된 가이드라인 문서]")
+        for i, doc in enumerate(guideline, 1):
+            logging.info(f"  [{i}] {doc.page_content}...")
+
+        # todo: 만약에 guideline 내부에 비슷한 문장이 있으면, 법률 검색? 근데 유사도 검색하면 일단은 1개 이상은 있는 거 아닌가
+        if len(guideline) > 0:
+            logging.info(f"[그린워싱 가능성 존재]")
+            logging.info(f"[법률 검색 + 쿼리 임베딩]")
+            law = retriever_2nd.invoke(article)
+            context = "\n".join([doc.page_content for doc in law])[:1000]
+
+            logging.info(f"[2차 검색된 법률 문서]")
+            for i, doc in enumerate(law, 1):
+                logging.info(f"  [{i}] {doc.page_content}...")
+
+        answer = generate_answer(
+            model=model,
+            tokenizer=tokenizer,
+            query=article,
+            context=context,
+            prompt_version="base"
+        )
+        logging.info(f"[답변 생성] {answer}")
+        logging.info(f"[답변 종료]")
+
+        results.append({
+            "article": article,
+            "context": context,
+            "answer": answer
+        })
+
+    for r in results:
+        print("="*80)
+        print(f"Article Preview: {r['article'][:200]}...")
+        print(f"Context Preview: {r['context'][:200]}...")
+        print(f"Answer:\n{r['answer']}")
+        print("="*80)
+
+    logging_model(
+        model_name="llama3Ko",
+        embeddings_model="KoSimCSE",
+        retriever_strategy="double",
+        num_articles=len(test_input),
+        prompt_version="v3_cot_fewshot"
+    )
+
+    logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 종료 + few shot 아님")
+
+
 def double_llama3Ko_not_legalize():
     logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 시작 + 법률 용어화 안함")
 
@@ -314,6 +398,73 @@ def single_llama3Ko():
     logging.info("llama3Ko 모델과 single retriever을 사용한 그린워싱 판별 종료")
 
 
+def single_llama3Ko_base():
+    logging.info("llama3Ko 모델과 single retriever을 사용한 그린워싱 판별 시작 + base 프롬프트")
+
+    # 모델 불러오기
+    model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
+        model_name="llama3Ko",
+        embeddings_model=vectorStore.KoSimCSE(),
+        search_strategy="single"
+    )
+
+    results = []
+    test_input = get_data.load_data()
+
+    for idx, row in test_input.iterrows():
+        raw_article = row['full_text']
+
+        if not isinstance(raw_article, str):
+            logging.warning(
+                f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
+            continue
+
+        article = raw_article.strip()
+
+        logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
+        logging.info(f"[처리 기사 내용] {article}")
+        logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
+        guideline = retriever_1st.invoke(article)
+        context = "\n".join([doc.page_content for doc in guideline])[:1000]
+
+        logging.info(f"[1차 검색된 가이드라인 문서]")
+        for i, doc in enumerate(guideline, 1):
+            logging.info(f"  [{i}] {doc.page_content}...")
+
+        answer = generate_answer(
+            model=model,
+            tokenizer=tokenizer,
+            query=article,
+            context=context,
+            prompt_version="base"
+        )
+        logging.info(f"[답변 생성] {answer}")
+        logging.info(f"[답변 종료]")
+
+        results.append({
+            "article": article,
+            "context": context,
+            "answer": answer
+        })
+
+    for r in results:
+        print("="*80)
+        print(f"Article Preview: {r['article'][:200]}...")
+        print(f"Context Preview: {r['context'][:200]}...")
+        print(f"Answer:\n{r['answer']}")
+        print("="*80)
+
+    logging_model(
+        model_name="llama3Ko",
+        embeddings_model="KoSimCSE",
+        retriever_strategy="single",
+        num_articles=len(test_input),
+        prompt_version="v3_cot_fewshot"
+    )
+
+    logging.info("llama3Ko 모델과 single retriever을 사용한 그린워싱 판별 종료 + base 프롬프트")
+
+
 def rerank_llama3Ko():
     logging.info("llama3Ko 모델과 rerank retriever을 사용한 그린워싱 판별 시작")
 
@@ -381,7 +532,9 @@ def rerank_llama3Ko():
 
 
 if __name__ == "__main__":
+    double_llama3Ko_base()
     double_llama3Ko_not_legalize()
     double_llama3Ko()
+    single_llama3Ko_base()
     single_llama3Ko()
     rerank_llama3Ko()
