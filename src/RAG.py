@@ -187,7 +187,7 @@ def run_model(model,
     return test_input
 
 
-def llama3Ko(version="double", prompt_version="fewshot"):
+def llama3Ko(version="double", prompt_version="fewshot", news_mix=False):
     logging.info(
         f"llama3Ko + {version} retriever + {prompt_version} 사용한 그린워싱 판별 시작")
 
@@ -196,7 +196,8 @@ def llama3Ko(version="double", prompt_version="fewshot"):
         model_name="llama3Ko",
         embeddings_model=vectorStore.KoSimCSE(),
         embeddings_model_name="KoSimCSE",
-        search_strategy="double"
+        search_strategy="double",
+        news_mix=news_mix,
     )
 
     test_input = run_model(
@@ -206,7 +207,8 @@ def llama3Ko(version="double", prompt_version="fewshot"):
         rt_l=rt_l,
         rt_n=rt_n,
         version=version,
-        prompt_version=prompt_version
+        prompt_version=prompt_version,
+        news_mix=news_mix,
     )
 
     logging_model(
