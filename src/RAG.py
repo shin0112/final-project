@@ -531,6 +531,73 @@ def rerank_llama3Ko():
     logging.info("llama3Ko 모델과 rerank retriever을 사용한 그린워싱 판별 종료")
 
 
+def rerank_llama3Ko_base():
+    logging.info("llama3Ko 모델과 rerank retriever을 사용한 그린워싱 판별 시작")
+
+    # 모델 불러오기
+    model, tokenizer = model_loader.load_model("llama3Ko")
+    tokenizer.pad_token = tokenizer.eos_token
+
+    reranker = vectorStore.BgeReranker()
+    retriever = reranker.compression_retriever
+
+    results = []
+    test_input = get_data.load_data()
+
+    for idx, row in test_input.iterrows():
+        raw_article = row['full_text']
+
+        if not isinstance(raw_article, str):
+            logging.warning(
+                f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
+            continue
+
+        article = raw_article.strip()
+
+        logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
+        logging.info(f"[처리 기사 내용] {article}")
+        logging.info(f"[guideline&law 문서 검색 + 임베딩]")
+        all_docs = retriever.invoke(article)
+        context = "\n".join([doc.page_content for doc in all_docs])[:1000]
+
+        logging.info(f"[검색된 문서]")
+        for i, doc in enumerate(all_docs, 1):
+            logging.info(f"  [{i}] {doc.page_content}...")
+
+        answer = generate_answer(
+            model=model,
+            tokenizer=tokenizer,
+            query=article,
+            context=context,
+            prompt_version="base",
+        )
+        logging.info(f"[답변 생성] {answer}")
+        logging.info(f"[답변 종료]")
+
+        results.append({
+            "article": article,
+            "context": context,
+            "answer": answer
+        })
+
+    for r in results:
+        print("="*80)
+        print(f"Article Preview: {r['article'][:200]}...")
+        print(f"Context Preview: {r['context'][:200]}...")
+        print(f"Answer:\n{r['answer']}")
+        print("="*80)
+
+    logging_model(
+        model_name="llama3Ko",
+        embeddings_model="BgeReranker",
+        retriever_strategy="rerank",
+        num_articles=len(test_input),
+        prompt_version="base"
+    )
+
+    logging.info("llama3Ko 모델과 rerank retriever을 사용한 그린워싱 판별 종료")
+
+
 if __name__ == "__main__":
     # double_llama3Ko_base()
     # double_llama3Ko_not_legalize()
@@ -538,3 +605,4 @@ if __name__ == "__main__":
     # single_llama3Ko_base()
     # single_llama3Ko()
     rerank_llama3Ko()
+    rerank_llama3Ko_base()
