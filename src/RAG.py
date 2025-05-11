@@ -490,12 +490,12 @@ def rerank_llama3Ko():
 
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
         logging.info(f"[처리 기사 내용] {article}")
-        logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
-        guideline = retriever.invoke(article)
-        context = "\n".join([doc.page_content for doc in guideline])[:1000]
+        logging.info(f"[guideline&law 문서 검색 + 임베딩]")
+        all_docs = retriever.invoke(article)
+        context = "\n".join([doc.page_content for doc in all_docs])[:1000]
 
-        logging.info(f"[1차 검색된 가이드라인 문서]")
-        for i, doc in enumerate(guideline, 1):
+        logging.info(f"[검색된 문서]")
+        for i, doc in enumerate(all_docs, 1):
             logging.info(f"  [{i}] {doc.page_content}...")
 
         answer = generate_answer(
