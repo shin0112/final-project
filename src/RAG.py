@@ -91,25 +91,33 @@ def run_experiment(model_name,
 
     if search_strategy == "double":
         law_store = vectorStore.load_or_create_faiss_law(embeddings_model)
-        retriever_2nd = law_store.as_retriever(
+        rt_l = law_store.as_retriever(
             search_type="similarity",
             search_kwargs={"k": 2}
         )
     else:
-        retriever_2nd = None
+        rt_l = None
 
-    retriever_1st = guideline_store.as_retriever(
+    news_store = vectorStore.load_or_create_faiss_news(embeddings_model)
+    rt_n = news_store.as_retriever(
         search_type="similarity",
         search_kwargs={"k": 2}
     )
 
-    return model, tokenizer, retriever_1st, retriever_2nd
+    rt_g = guideline_store.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": 2}
+    )
+
+    # r_g = 가이드라인, r_l: 법률, r_n: 뉴스
+    return model, tokenizer, rt_g, rt_l, rt_n
 
 
 def run_model(model,
               tokenizer,
-              retriever_1st,
-              retriever_2nd,
+              rt_g,
+              rt_l,
+              rt_n,
               version="double",
               prompt_version="fewshot"
               ):
@@ -129,7 +137,7 @@ def run_model(model,
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
         logging.info(f"[처리 기사 내용] {article}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
-        guideline = retriever_1st.invoke(article)
+        guideline = rt_g.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
 
         logging.info(f"[1차 검색된 가이드라인 문서]")
@@ -140,7 +148,7 @@ def run_model(model,
         if version == "double" and len(guideline) > 0:
             logging.info(f"[그린워싱 가능성 존재]")
             logging.info(f"[법률 검색 + 쿼리 임베딩]")
-            law = retriever_2nd.invoke(article)
+            law = rt_l.invoke(article)
             context = "\n".join([doc.page_content for doc in law])[:1000]
 
             logging.info(f"[2차 검색된 법률 문서]")
@@ -172,7 +180,7 @@ def llama3Ko(version="double", prompt_version="fewshot"):
         f"llama3Ko + {version} retriever + {prompt_version} 사용한 그린워싱 판별 시작")
 
     # 모델 불러오기
-    model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
+    model, tokenizer, rt_g, rt_l, rt_n = run_experiment(
         model_name="llama3Ko",
         embeddings_model=vectorStore.KoSimCSE(),
         embeddings_model_name="KoSimCSE",
@@ -182,8 +190,9 @@ def llama3Ko(version="double", prompt_version="fewshot"):
     test_input = run_model(
         model=model,
         tokenizer=tokenizer,
-        retriever_1st=retriever_1st,
-        retriever_2nd=retriever_2nd,
+        rt_g=rt_g,
+        rt_l=rt_l,
+        rt_n=rt_n,
         version=version,
         prompt_version=prompt_version
     )
@@ -204,7 +213,7 @@ def double_llama3Ko_not_legalize():
     logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 시작 + 법률 용어화 안함")
 
     # 모델 불러오기
-    model, tokenizer, retriever_1st, retriever_2nd = run_experiment(
+    model, tokenizer, rt_g, rt_l, rt_n = run_experiment(
         model_name="llama3Ko",
         embeddings_model=vectorStore.KoSimCSE(),
         embeddings_model_name="KoSimCSE",
@@ -227,7 +236,7 @@ def double_llama3Ko_not_legalize():
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
         logging.info(f"[처리 기사 내용] {article}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
-        guideline = retriever_1st.invoke(article)
+        guideline = rt_g.invoke(article)
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
 
         logging.info(f"[1차 검색된 가이드라인 문서]")
@@ -238,7 +247,7 @@ def double_llama3Ko_not_legalize():
         if len(guideline) > 0:
             logging.info(f"[그린워싱 가능성 존재]")
             logging.info(f"[법률 검색 + 쿼리 임베딩]")
-            law = retriever_2nd.invoke(article)
+            law = rt_l.invoke(article)
             context = "\n".join([doc.page_content for doc in law])[:1000]
 
             logging.info(f"[2차 검색된 법률 문서]")
