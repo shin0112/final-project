@@ -3,6 +3,8 @@ from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain.retrievers.document_compressors import CrossEncoderReranker
 import logging
 import torch
+import pandas as pd
+from langchain.docstore.document import Document
 from pathlib import Path
 
 from transformers import AutoModel, AutoTokenizer
@@ -17,7 +19,10 @@ FAISS_PATH = Path(__file__).parent.parent / 'data' / 'faiss_index'
 GUIDELINE_FAISS_PATH = FAISS_PATH / "guideline"
 LAW_FAISS_PATH = FAISS_PATH / "law"
 RERANK_FAISS_PATH = FAISS_PATH / "rerank"
-LAW_FILE_PATH = Path(__file__).parent.parent / 'data' / 'law_file_paths.json'
+LAW_FILE_PATH = Path(__file__).parent.parent / 'config' / 'law_file_paths.json'
+NEWS_FAISS_PATH = FAISS_PATH / "news"
+NEWS_PATH = Path(__file__).parent.parent/'data' / \
+    'greenwashing'/'greenwashing_train.csv'
 # PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
 
 
@@ -177,6 +182,61 @@ def load_or_create_faiss_guideline_rerank(embeddings_model):
         store.save_local(RERANK_FAISS_PATH)
 
         logging.info("RERANK용 FAISS 인덱스 저장 완료!")
+
+    return store
+
+
+def load_or_create_faiss_news(embedding_model):
+    if NEWS_FAISS_PATH.exists():
+        logging.info("뉴스 벡터 DB 로딩 중...")
+        store = FAISS.load_local(
+            NEWS_FAISS_PATH,
+            embedding_model,
+            allow_dangerous_deserialization=True
+        )
+        logging.info("뉴스 벡터 DB 로드 완료!")
+        return store
+
+    logging.info("뉴스 기사 CSV 데이터 불러오기")
+    df = pd.read_csv(NEWS_PATH)
+    df = df[['title', 'content', 'greenwashing_level', 'full_text']].copy()
+    df.rename(columns={
+        'title': 'title',
+        'content': 'summary',
+        'greenwashing_level': 'label',
+        'full_text': 'text'
+    }, inplace=True)
+    df['label'] = df['label'].fillna(0).astype(float)
+
+    # 메타데이터
+    df['metadata'] = df.apply(lambda row: {
+        'title': row['title'],
+        'summary': row['summary'],
+        'label': row['label']
+    }, axis=1)
+
+    documents = [
+        Document(page_content=row['text'], metadata=row['metadata'])
+        for _, row in df.iterrows()
+    ]
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+    )
+    docs_split = text_splitter.split_documents(documents)
+
+    logging.info(f"{len(docs_split)}개의 기사 문서를 벡터화 중입니다...")
+    store = FAISS.from_documents(
+        documents=docs_split,
+        embedding=embedding_model,
+        distance_strategy=DistanceStrategy.COSINE
+    )
+
+    NEWS_FAISS_PATH.mkdir(parents=True, exist_ok=True)
+    store.save_local(NEWS_FAISS_PATH)
+    logging.info("뉴스 기사 벡터 DB 저장 완료!")
 
     return store
 
