@@ -23,6 +23,7 @@ LAW_FILE_PATH = Path(__file__).parent.parent / 'config' / 'law_file_paths.json'
 NEWS_FAISS_PATH = FAISS_PATH / "news"
 NEWS_PATH = Path(__file__).parent.parent/'data' / \
     'greenwashing'/'greenwashing_train.csv'
+GUIDELINE_NEWS_FAISS_PATH = FAISS_PATH / "guideline_news"
 # PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
 
 
@@ -197,6 +198,30 @@ def load_or_create_faiss_news(embedding_model):
         logging.info("뉴스 벡터 DB 로드 완료!")
         return store
 
+    documents = get_news_data()
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+    )
+    docs_split = text_splitter.split_documents(documents)
+
+    logging.info(f"{len(docs_split)}개의 기사 문서를 벡터화 중입니다...")
+    store = FAISS.from_documents(
+        documents=docs_split,
+        embedding=embedding_model,
+        distance_strategy=DistanceStrategy.COSINE
+    )
+
+    NEWS_FAISS_PATH.mkdir(parents=True, exist_ok=True)
+    store.save_local(NEWS_FAISS_PATH)
+    logging.info("뉴스 기사 벡터 DB 저장 완료!")
+
+    return store
+
+
+def get_news_data():
     logging.info("뉴스 기사 CSV 데이터 불러오기")
     df = pd.read_csv(NEWS_PATH)
     df = df[['title', 'content', 'greenwashing_level', 'full_text']].copy()
@@ -220,23 +245,45 @@ def load_or_create_faiss_news(embedding_model):
         for _, row in df.iterrows()
     ]
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
-        length_function=len,
-    )
-    docs_split = text_splitter.split_documents(documents)
+    return documents
 
-    logging.info(f"{len(docs_split)}개의 기사 문서를 벡터화 중입니다...")
+
+def load_or_create_faiss_guideline_and_news(embedding_model):
+    if GUIDELINE_NEWS_FAISS_PATH.exists():
+        logging.info("guideline + news 통합 벡터 DB 로드 중...")
+        store = FAISS.load_local(
+            GUIDELINE_NEWS_FAISS_PATH,
+            embedding_model,
+            allow_dangerous_deserialization=True
+        )
+        logging.info("로드 완료")
+        return store
+
+    logging.info("guideline + news 통합 벡터 DB 생성 중...")
+
+    # 가이드라인 & 뉴스 문서 로드
+    guideline_docs = get_ko_law.get_ko_guideline()
+    for doc in guideline_docs:
+        for page in doc:
+            page.metadata["type"] = "guideline"
+    news_docs = get_news_data()
+
+    # 문서 분할
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000, chunk_overlap=200)
+    all_docs = []
+    for group in (guideline_docs, news_docs):
+        all_docs += text_splitter.split_documents(group)
+
     store = FAISS.from_documents(
-        documents=docs_split,
+        documents=all_docs,
         embedding=embedding_model,
         distance_strategy=DistanceStrategy.COSINE
     )
 
-    NEWS_FAISS_PATH.mkdir(parents=True, exist_ok=True)
-    store.save_local(NEWS_FAISS_PATH)
-    logging.info("뉴스 기사 벡터 DB 저장 완료!")
+    GUIDELINE_NEWS_FAISS_PATH.mkdir(parents=True, exist_ok=True)
+    store.save_local(GUIDELINE_NEWS_FAISS_PATH)
+    logging.info("guideline + news 통합 벡터 DB 저장 완료")
 
     return store
 
