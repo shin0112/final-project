@@ -144,7 +144,8 @@ def run_model(model,
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
         logging.info(f"[처리 기사 내용] {article}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
-        guideline = rt_g.invoke(article)
+        guideline = vectorStore.search_with_score_filter(
+            rt_g, article, min_score=0.75)
         context = "\n".join([doc.page_content for doc in guideline])[:3500]
 
         logging.info(f"[1차 검색된 가이드라인 문서]")
@@ -155,7 +156,8 @@ def run_model(model,
         if version == "double" and len(guideline) > 0:
             logging.info(f"[그린워싱 가능성 존재]")
             logging.info(f"[법률 검색 + 쿼리 임베딩]")
-            law = rt_l.invoke(article)
+            law = vectorStore.search_with_score_filter(
+                rt_l, article, min_score=0.75)
             context = "\n".join([doc.page_content for doc in law])[:3500]
 
             logging.info(f"[2차 검색된 법률 문서]")
@@ -164,7 +166,8 @@ def run_model(model,
 
         if rt_n is not None and context.strip() == "":
             logging.info("[3차 검색 뉴스]")
-            news = rt_n.invoke(article)
+            news = vectorStore.search_with_score_filter(
+                rt_n, article, min_score=0.75)
             context = "\n".join([doc.page_content for doc in news])[:3500]
 
         answer = generate_answer(
@@ -366,6 +369,7 @@ if __name__ == "__main__":
     # rerank_llama3Ko()
     # rerank_llama3Ko(prompt_version="base")
 
+    logging.info("유사도 평가 도입")
     logging.info("[RUN] double + base (news 분리)")
     llama3Ko(version="double", prompt_version="base", news_mix=False)
 
