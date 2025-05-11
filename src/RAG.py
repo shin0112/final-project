@@ -532,9 +532,9 @@ def rerank_llama3Ko():
 
 
 if __name__ == "__main__":
-    double_llama3Ko_base()
-    double_llama3Ko_not_legalize()
-    double_llama3Ko()
-    single_llama3Ko_base()
-    single_llama3Ko()
+    # double_llama3Ko_base()
+    # double_llama3Ko_not_legalize()
+    # double_llama3Ko()
+    # single_llama3Ko_base()
+    # single_llama3Ko()
     rerank_llama3Ko()
