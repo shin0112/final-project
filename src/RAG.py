@@ -78,7 +78,9 @@ def run_experiment(model_name,
                    embeddings_model,
                    embeddings_model_name="KoSimCSE",
                    search_strategy: str = "double",
-                   num_articles: int = 10,):
+                   num_articles: int = 10,
+                   news_mix=False
+                   ):
     # 0. 초기화
     # 0.1. LLM 모델
     model, tokenizer = model_loader.load_model(model_name)
@@ -86,8 +88,18 @@ def run_experiment(model_name,
 
     # 0.2. 쿼리 및 문서 임베딩 모델
     embeddings_model = embeddings_model
-    guideline_store = vectorStore.load_or_create_faiss_guideline(
-        embeddings_model)
+    if news_mix:
+        guideline_store = vectorStore.load_or_create_faiss_guideline_and_news(
+            embeddings_model)
+        rt_n = None
+    else:
+        guideline_store = vectorStore.load_or_create_faiss_guideline(
+            embeddings_model)
+        news_store = vectorStore.load_or_create_faiss_news(embeddings_model)
+        rt_n = news_store.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 2}
+        )
 
     if search_strategy == "double":
         law_store = vectorStore.load_or_create_faiss_law(embeddings_model)
@@ -97,12 +109,6 @@ def run_experiment(model_name,
         )
     else:
         rt_l = None
-
-    news_store = vectorStore.load_or_create_faiss_news(embeddings_model)
-    rt_n = news_store.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 2}
-    )
 
     rt_g = guideline_store.as_retriever(
         search_type="similarity",
@@ -119,7 +125,8 @@ def run_model(model,
               rt_l,
               rt_n,
               version="double",
-              prompt_version="fewshot"
+              prompt_version="fewshot",
+              news_mix=False
               ):
     results = []
     test_input = get_data.load_data()
@@ -138,7 +145,7 @@ def run_model(model,
         logging.info(f"[처리 기사 내용] {article}")
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = rt_g.invoke(article)
-        context = "\n".join([doc.page_content for doc in guideline])[:1000]
+        context = "\n".join([doc.page_content for doc in guideline])[:3500]
 
         logging.info(f"[1차 검색된 가이드라인 문서]")
         for i, doc in enumerate(guideline, 1):
@@ -149,11 +156,16 @@ def run_model(model,
             logging.info(f"[그린워싱 가능성 존재]")
             logging.info(f"[법률 검색 + 쿼리 임베딩]")
             law = rt_l.invoke(article)
-            context = "\n".join([doc.page_content for doc in law])[:1000]
+            context = "\n".join([doc.page_content for doc in law])[:3500]
 
             logging.info(f"[2차 검색된 법률 문서]")
             for i, doc in enumerate(law, 1):
                 logging.info(f"  [{i}] {doc.page_content}...")
+
+        if rt_n is not None and context.strip() == "":
+            logging.info("[3차 검색 뉴스]")
+            news = rt_n.invoke(article)
+            context = "\n".join([doc.page_content for doc in news])[:3500]
 
         answer = generate_answer(
             model=model,
@@ -343,11 +355,24 @@ def rerank_llama3Ko(prompt_version="fewshot"):
 
 
 if __name__ == "__main__":
-    llama3Ko(version="double", prompt_version="fewshot")
-    llama3Ko(version="double", prompt_version="base")
-    llama3Ko(version="single", prompt_version="fewshot")
-    llama3Ko(version="single", prompt_version="base")
-    double_llama3Ko_not_legalize()
+    # llama3Ko(version="double", prompt_version="fewshot")
+    # llama3Ko(version="double", prompt_version="base")
+    # llama3Ko(version="single", prompt_version="fewshot")
+    # llama3Ko(version="single", prompt_version="base")
+    # double_llama3Ko_not_legalize()
 
-    rerank_llama3Ko()
-    rerank_llama3Ko(prompt_version="base")
+    # rerank_llama3Ko()
+    # rerank_llama3Ko(prompt_version="base")
+
+    logging.info("[RUN] double + base (news 분리)")
+    llama3Ko(version="double", prompt_version="base", news_mix=False)
+
+    logging.info("[RUN] single + base (news 분리)")
+    llama3Ko(version="single", prompt_version="base", news_mix=False)
+
+    # 통합형 실험
+    logging.info("[RUN] double + base (news 통합)")
+    llama3Ko(version="double", prompt_version="base", news_mix=True)
+
+    logging.info("[RUN] single + base (news 통합)")
+    llama3Ko(version="single", prompt_version="base", news_mix=True)
