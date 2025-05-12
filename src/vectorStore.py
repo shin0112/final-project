@@ -11,6 +11,7 @@ from transformers import AutoModel, AutoTokenizer
 from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores.utils import DistanceStrategy
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from itertools import chain
 
 import get_ko_law
 
@@ -39,15 +40,17 @@ class KoSimCSE:
     def __call__(self, text: str) -> list[float]:
         return self.embed_query(text)
 
-    def embed_documents(self, texts) -> list[list[float]]:
-        inputs = self.tokenizer(
-            texts, padding=True, truncation=True, return_tensors="pt").to(self.device)
-        with torch.no_grad():
-            outputs = self.model(**inputs, return_dict=True)
-            embeddings = outputs.last_hidden_state[:, 0]  # [CLS] 토큰 가져오기
-            embeddings = embeddings / \
-                embeddings.norm(dim=1, keepdim=True)  # normalize
-        return embeddings.cpu().tolist()
+    def embed_documents(self, texts, batch_size: int = 16) -> list[list[float]]:
+        embeddings = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i+batch_size]
+            inputs = self.tokenizer(
+                batch, padding=True, truncation=True, return_tensors="pt").to(self.device)
+            with torch.no_grad():
+                outputs = self.model(**inputs, return_dict=True)
+                emb = outputs.last_hidden_state[:, 0]  # [CLS] 토큰
+                embeddings.extend(emb.cpu().tolist())
+        return embeddings
 
     def embed_query(self, text: str) -> list[float]:
         return self.embed_documents([text])[0]
@@ -268,12 +271,13 @@ def load_or_create_faiss_guideline_and_news(embedding_model):
             page.metadata["type"] = "guideline"
     news_docs = get_news_data()
 
+    flat_guideline_docs = list(chain.from_iterable(guideline_docs))
+    combined_docs = flat_guideline_docs + news_docs
+
     # 문서 분할
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000, chunk_overlap=200)
-    all_docs = []
-    for group in (guideline_docs, news_docs):
-        all_docs += text_splitter.split_documents(group)
+    all_docs = text_splitter.split_documents(combined_docs)
 
     store = FAISS.from_documents(
         documents=all_docs,
@@ -286,6 +290,24 @@ def load_or_create_faiss_guideline_and_news(embedding_model):
     logging.info("guideline + news 통합 벡터 DB 저장 완료")
 
     return store
+
+
+def search_with_score_filter(retriever, query, min_score=0.75, k=5):
+    results = retriever.vectorstore.similarity_search_with_score(query, k=k)
+    filtered = [
+        doc for doc, score in results
+        if score >= min_score
+    ]
+    return filtered
+
+
+# def search_guideline_only(retriever, query, top_k=10, min_score=0.75):
+#     results = retriever.vectorstore.similarity_search_with_score(
+#         query, k=top_k)
+#     return [
+#         doc for doc, score in results
+#         if doc.metadata.get("type") == "guideline" and score >= min_score
+#     ]
 
 
 class BgeReranker:
