@@ -19,7 +19,6 @@ cot = """
 4. 최종적으로 판단, 근거, 해결방안을 작성하세요.
 """
 
-
 output = """
 [출력 형식]
 1. 판단: [그린워싱 있음 / 없음]
@@ -27,7 +26,6 @@ output = """
 3. 법률: [관련 조항 요약 (필요 시)]
 4. 해결방안: [문제 해결을 위한 구체적 조치 제안]
 """
-
 
 examples = [
     {
@@ -109,7 +107,9 @@ goal = """
 """
 
 template = output + cot + role + goal
-example_template = output+cot + role + examples_text + \
+example_template = output + cot + role + examples_text + \
+    '위 예시는 참고용입니다. 이제 실제 기사에 대한 분석을 시작하세요.\n\n' + goal
+one_shot_example_template = output + cot + role + one_shot_examples_text + \
     '위 예시는 참고용입니다. 이제 실제 기사에 대한 분석을 시작하세요.\n\n' + goal
 
 base_prompt = PromptTemplate(
@@ -119,5 +119,10 @@ base_prompt = PromptTemplate(
 
 fewShot_prompt = PromptTemplate(
     template=example_template,
+    input_variables=["query", "context"],
+)
+
+one_shot_prompt = PromptTemplate(
+    template=one_shot_example_template,
     input_variables=["query", "context"],
 )
