@@ -148,7 +148,7 @@ def run_model(model,
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
         guideline = vectorStore.search_with_score_filter(
             rt_g, article, min_score=0.75)
-        context = "\n".join([doc.page_content for doc in guideline])[:3500]
+        context = "\n".join([doc.page_content for doc in guideline])[:1000]
 
         logging.info(f"[1차 검색된 가이드라인 문서]")
         for i, doc in enumerate(guideline, 1):
@@ -160,7 +160,7 @@ def run_model(model,
             logging.info(f"[법률 검색 + 쿼리 임베딩]")
             law = vectorStore.search_with_score_filter(
                 rt_l, article, min_score=0.75)
-            context = "\n".join([doc.page_content for doc in law])[:3500]
+            context = "\n".join([doc.page_content for doc in law])[:1000]
 
             logging.info(f"[2차 검색된 법률 문서]")
             for i, doc in enumerate(law, 1):
@@ -170,7 +170,7 @@ def run_model(model,
             logging.info("[3차 검색 뉴스]")
             news = vectorStore.search_with_score_filter(
                 rt_n, article, min_score=0.75)
-            context = "\n".join([doc.page_content for doc in news])[:3500]
+            context = "\n".join([doc.page_content for doc in news])[:1000]
 
         answer = generate_answer(
             model=model,
