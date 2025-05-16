@@ -21,6 +21,8 @@ def load_prompt(version="fewshot"):
         return prompt_v3_cot_fewshot.base_prompt
     elif version == "fewshot":
         return prompt_v3_cot_fewshot.fewShot_prompt
+    elif version == "oneshot":
+        return prompt_v3_cot_fewshot.one_shot_example_template
 
 
 def logging_result(results):
@@ -164,7 +166,7 @@ def run_model(model,
             for i, doc in enumerate(law, 1):
                 logging.info(f"  [{i}] {doc.page_content}...")
 
-        if rt_n is not None and context.strip() == "":
+        if rt_n is not None:
             logging.info("[3차 검색 뉴스]")
             news = vectorStore.search_with_score_filter(
                 rt_n, article, min_score=0.75)
@@ -366,19 +368,19 @@ if __name__ == "__main__":
     # llama3Ko(version="single", prompt_version="base")
     # double_llama3Ko_not_legalize()
 
-    # rerank_llama3Ko()
-    # rerank_llama3Ko(prompt_version="base")
+    rerank_llama3Ko(prompt_version="oneshot")
+    rerank_llama3Ko(prompt_version="base")
 
-    logging.info("유사도 평가 도입")
-    logging.info("[RUN] double + base (news 분리)")
-    llama3Ko(version="double", prompt_version="base", news_mix=False)
+    # logging.info("유사도 평가 도입")
+    # logging.info("[RUN] double + base (news 분리)")
+    # llama3Ko(version="double", prompt_version="base", news_mix=False)
 
-    logging.info("[RUN] single + base (news 분리)")
-    llama3Ko(version="single", prompt_version="base", news_mix=False)
+    # logging.info("[RUN] single + base (news 분리)")
+    # llama3Ko(version="single", prompt_version="base", news_mix=False)
 
-    # 통합형 실험
-    logging.info("[RUN] double + base (news 통합)")
-    llama3Ko(version="double", prompt_version="base", news_mix=True)
+    # # 통합형 실험
+    # logging.info("[RUN] double + base (news 통합)")
+    # llama3Ko(version="double", prompt_version="base", news_mix=True)
 
-    logging.info("[RUN] single + base (news 통합)")
-    llama3Ko(version="single", prompt_version="base", news_mix=True)
+    # logging.info("[RUN] single + base (news 통합)")
+    # llama3Ko(version="single", prompt_version="base", news_mix=True)
