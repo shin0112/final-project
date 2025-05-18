@@ -1,6 +1,9 @@
+import pandas as pd
+from query_processor import split_article_by_token_limit, decide_final_judgement
 import logging
 import torch
 import sys
+import re
 
 import get_data
 import model_loader
@@ -366,6 +369,85 @@ def rerank_llama3Ko(prompt_version="fewshot"):
     logging.info("llama3Ko 모델과 rerank retriever을 사용한 그린워싱 판별 종료")
 
 
+def summarize_answers(answers):
+    # 각 판단 요소를 모아 요약
+    reasons = []
+    laws = []
+    suggestions = []
+    for a in answers:
+        match = re.search(
+            r"1\. 판단:\s*(.*?)\n2\. 근거:\s*(.*?)\n3\. 법률:\s*(.*?)\n4\. 해결방안:\s*(.*)",
+            a['answer'],
+            re.DOTALL
+        )
+        if match:
+            _, reason, law, suggestion = match.groups()
+            reasons.append(reason.strip())
+            laws.append(law.strip())
+            suggestions.append(suggestion.strip())
+    reason_summary = " / ".join(set(reasons))
+    law_summary = " / ".join(set(laws))
+    suggestion_summary = " / ".join(set(suggestions))
+    return reason_summary, law_summary, suggestion_summary
+
+
+def llama3Ko_article_level(prompt_version="fewshot"):
+    model, tokenizer = model_loader.load_model("llama3Ko")
+    tokenizer.pad_token = tokenizer.eos_token
+    retriever = vectorStore.BgeReranker().compression_retriever
+
+    test_input = get_data.load_data()
+    final_results = []
+
+    for idx, row in test_input.iterrows():
+        raw_article = row['full_text']
+        if not isinstance(raw_article, str):
+            continue
+
+        article = raw_article.strip()
+        chunks = split_article_by_token_limit(article, tokenizer)
+
+        chunk_answers = []
+        for c_idx, chunk in enumerate(chunks):
+            logging.info(
+                f"[{idx + 1}-{c_idx + 1}/{len(chunks)}] chunk 처리 중 (길이: {len(chunk)}자)")
+
+            context_docs = retriever.invoke(chunk)
+            context = "\n".join(
+                [doc.page_content for doc in context_docs])[:1000]
+
+            answer = generate_answer(
+                model, tokenizer, chunk, context, prompt_version=prompt_version)
+            logging.info(f"[답변 생성] {answer}")
+            logging.info(f"[답변 종료]")
+
+            chunk_answers.append({
+                "chunk_idx": c_idx + 1,
+                "chunk": chunk,
+                "answer": answer
+            })
+
+        final_judgement = decide_final_judgement(chunk_answers)
+        reason, law, suggestion = summarize_answers(chunk_answers)
+        full_answer = f"1. 판단: {final_judgement}\n2. 근거: {reason}\n3. 법률: {law}\n4. 해결방안: {suggestion}"
+
+        final_results.append({
+            "article_idx": idx + 1,
+            "article": article,
+            "final_judgement": final_judgement,
+            "reason_summary": reason,
+            "law_summary": law,
+            "suggestion_summary": suggestion,
+            "answer": full_answer
+        })
+
+    save_results(
+        final_results,
+        test_input_df=test_input,
+        filename=f"llama3Ko_article_level_{prompt_version}"
+    )
+
+
 if __name__ == "__main__":
     # llama3Ko(version="double", prompt_version="fewshot")
     # llama3Ko(version="double", prompt_version="base")
@@ -373,8 +455,11 @@ if __name__ == "__main__":
     # llama3Ko(version="single", prompt_version="base")
     # double_llama3Ko_not_legalize()
 
-    rerank_llama3Ko(prompt_version="oneshot")
-    rerank_llama3Ko(prompt_version="base")
+    # rerank_llama3Ko(prompt_version="oneshot")
+    # rerank_llama3Ko(prompt_version="base")
+
+    llama3Ko_article_level(prompt_version="oneshot")
+    llama3Ko_article_level(prompt_version="base")
 
     # logging.info("유사도 평가 도입")
     # logging.info("[RUN] double + base (news 분리)")
