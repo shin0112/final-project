@@ -1,6 +1,7 @@
 import re
 import logging
 import pandas as pd
+from collections import defaultdict
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -78,3 +79,74 @@ def extract_key_sentences(text: str, max_sentences: int = 5):
         logging.info(f"{i}. {s}")
 
     return selected
+
+
+def split_article_by_token_limit(article, tokenizer, max_tokens=1024):
+    sentences = re.split(r'(?<=[.!?])\s+', article.strip())
+    chunks = []
+    current_chunk = ""
+    current_token_count = 0
+
+    for sentence in sentences:
+        tokens = tokenizer.tokenize(sentence)
+        if current_token_count + len(tokens) > max_tokens:
+            chunks.append(current_chunk.strip())
+            current_chunk = sentence
+            current_token_count = len(tokens)
+        else:
+            current_chunk += " " + sentence
+            current_token_count += len(tokens)
+
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+    return chunks
+
+
+def decide_final_judgement(answers):
+    num_yes = sum("그린워싱 있음" in a['answer'] for a in answers)
+    num_no = sum("그린워싱 없음" in a['answer'] for a in answers)
+
+    if num_yes > num_no:
+        return "그린워싱 있음"
+    elif num_no > num_yes:
+        return "그린워싱 없음"
+    else:
+        return "판단 유보"
+
+
+def postprocess_rerank_results(results):
+    """
+    RAG 결과에서 chunk별 응답을 받아 기사 단위 판단으로 종합하고 상세 판단 결과를 반환
+    """
+    grouped = defaultdict(list)
+    for r in results:
+        grouped[r['article_idx']].append(r)
+
+    final_outputs = []
+    for article_idx, chunks in grouped.items():
+        final_judgement = decide_final_judgement(chunks)
+        detailed = []
+        for r in chunks:
+            chunk_text = r["chunk"]
+            match = re.search(
+                r"1\. 판단:\s*(.*?)\n2\. 근거:\s*(.*?)\n3\. 법률:\s*(.*?)\n4\. 해결방안:\s*(.*)",
+                r["answer"],
+                re.DOTALL
+            )
+            if match:
+                judgement, reason, law, suggestion = match.groups()
+            else:
+                judgement = reason = law = suggestion = "파싱 오류"
+            detailed.append({
+                "article_idx": article_idx,
+                "chunk_idx": r["chunk_idx"],
+                "chunk_text": chunk_text,
+                "judgement": judgement,
+                "reason": reason,
+                "law": law,
+                "suggestion": suggestion,
+                "final_judgement": final_judgement
+            })
+        final_outputs.extend(detailed)
+
+    return pd.DataFrame(final_outputs)
