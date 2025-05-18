@@ -321,7 +321,7 @@ class BgeReranker:
         self.compression_retriever = ContextualCompressionRetriever(
             base_compressor=self.compressor,
             base_retriever=load_or_create_faiss_rerank(
-                MsMarcoDistilbert()
+                KoSimCSE()
             ).as_retriever(search_kwargs={"k": 10}),
             return_source_documents=True,
             search_kwargs={"k": 3},
