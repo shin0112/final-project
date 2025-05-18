@@ -6,6 +6,7 @@ import get_data
 import model_loader
 import vectorStore
 from prompts import prompt_v3_cot_fewshot
+from save_data import save_results
 
 # Configure logging
 for handler in logging.root.handlers[:]:
@@ -189,6 +190,10 @@ def run_model(model,
         })
 
     logging_result(results)
+    save_results(results,
+                 test_input_df=test_input,
+                 filename=f"llama3Ko_{version}_{prompt_version}"
+                 )
     return test_input
 
 
