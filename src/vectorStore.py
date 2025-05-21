@@ -322,8 +322,8 @@ class BgeReranker:
             base_compressor=self.compressor,
             base_retriever=load_or_create_faiss_rerank(
                 KoSimCSE()
-            ).as_retriever(search_kwargs={"k": 10}),
+            ).as_retriever(search_kwargs={"k": 5}),
             return_source_documents=True,
-            search_kwargs={"k": 3},
+            search_kwargs={"k": 2},
         )
         logging.info("BgeReranker 모델 로드 완료!")
