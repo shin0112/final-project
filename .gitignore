@@ -10,3 +10,4 @@ logs_backup**/
 
 # datasets
 data/
+results/
