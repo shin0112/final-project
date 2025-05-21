@@ -150,3 +150,21 @@ def postprocess_rerank_results(results):
         final_outputs.extend(detailed)
 
     return pd.DataFrame(final_outputs)
+
+
+def extract_relevant_sentences(article):
+    """
+    기사에서 그린워싱 관련 문장 추출
+    """
+    sentences = re.split(r'(?<=[.!?])\s+|\n+', article.strip())
+    filtered = [
+        s for s in sentences
+        if is_environment_related(s)
+    ]
+    return " ".join(filtered)
+
+
+def is_environment_related(sentence):
+    has_keyword = any(keyword in sentence for keyword in KEYWORDS)
+    has_number = bool(re.search(r'\d+', sentence))
+    return has_keyword or has_number

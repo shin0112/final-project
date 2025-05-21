@@ -27,7 +27,7 @@ def load_test_data(rows: int = None) -> pd.DataFrame:
 
 def load_data(legalize: bool = True):
     # get input data 10개
-    test_input = load_test_data()
+    test_input = load_test_data(3)
     test_input = test_input.dropna(subset=["full_text"])
 
     logging.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")

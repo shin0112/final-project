@@ -7,6 +7,7 @@ import re
 
 import get_data
 import model_loader
+import query_processor
 import vectorStore
 from prompts import prompt_v3_cot_fewshot
 from save_data import save_results
@@ -333,6 +334,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
 
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
         logging.info(f"[처리 기사 내용] {article}")
+
         logging.info(f"[guideline&law 문서 검색 + 임베딩]")
         all_docs = retriever.invoke(article)
         context = "\n".join([doc.page_content for doc in all_docs])[:1000]
@@ -404,10 +406,18 @@ def llama3Ko_article_level(prompt_version="fewshot"):
         if not isinstance(raw_article, str):
             continue
 
+        logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
+        logging.info(
+            f"[처리 기사 내용] {raw_article[:1000]}, 길이: {len(raw_article)}자")
         article = raw_article.strip()
-        chunks = split_article_by_token_limit(article, tokenizer)
 
+        if len(article) >= 1024:
+            logging.info(f"[기사 길이] {len(article)}자 → 기사 처리")
+            article = query_processor.extract_relevant_sentences(article)
+
+        chunks = split_article_by_token_limit(article, tokenizer)
         chunk_answers = []
+
         for c_idx, chunk in enumerate(chunks):
             logging.info(
                 f"[{idx + 1}-{c_idx + 1}/{len(chunks)}] chunk 처리 중 (길이: {len(chunk)}자)")
