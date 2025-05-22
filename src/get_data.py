@@ -3,9 +3,12 @@ import pandas as pd
 from pathlib import Path
 
 import query_processor
+import process_data
 
 test_input_path = Path(__file__).parent.parent / 'data' / \
     'greenwashing' / 'greenwashing_test.csv'
+test_input_c_path = Path(__file__).parent.parent / 'data' / \
+    'greenwashing' / 'greenwashing_test_compressed.csv'
 
 
 def load_test_data(rows: int = None) -> pd.DataFrame:
@@ -18,10 +21,12 @@ def load_test_data(rows: int = None) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame containing the test data.
     """
-    if not test_input_path.exists():
-        raise FileNotFoundError(f"File not found: {test_input_path}")
+    process_data.compress_article(test_input_path)
 
-    df = pd.read_csv(test_input_path, encoding='utf-8')
+    if not test_input_c_path.exists():
+        raise FileNotFoundError(f"File not found: {test_input_c_path}")
+
+    df = pd.read_csv(test_input_c_path, encoding='utf-8')
     return df.head(rows) if rows else df
 
 
