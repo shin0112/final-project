@@ -1,9 +1,9 @@
 import os
-import prompts
 import pandas as pd
 import model_loader
 import logging
 
+from prompts import prompt_compression
 # 로깅 설정
 logging.basicConfig(
     level=logging.INFO,
@@ -36,7 +36,7 @@ def compress_article(file_name: str):
 
     # 프롬프트 불러오기 (기사 압축 프롬프트)
     try:
-        prompt = prompts.prompt_compression.base_prompt
+        prompt = prompt_compression.base_prompt
         logging.info("프롬프트 로드 완료")
     except Exception as e:
         logging.exception("프롬프트 로드 중 오류 발생")
