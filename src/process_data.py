@@ -28,7 +28,7 @@ def compress_article(file_name: str):
     # 모델 로드하기 (llama3ko)
     try:
         logging.info("기사 압축에 사용할 LLM 모델을 로드합니다.")
-        llm = model_loader.llama3Ko_loader()
+        model, _ = model_loader.llama3Ko_loader()
         logging.info("모델 로드 완료")
     except Exception as e:
         logging.exception("모델 로드 중 오류 발생")
@@ -54,7 +54,7 @@ def compress_article(file_name: str):
             input_prompt = prompt.format(news=news)
             logging.info(
                 f"{idx+1}/{len(df)}번째 기사 압축 중... (기사 길이: {len(news)}자)")
-            compressed = llm.generate(input_prompt)
+            compressed = model.generate(input_prompt)
             compressed_results.append(compressed)
             logging.debug(f"{idx+1}번째 기사 압축 결과: {compressed[:50]}...")
         except Exception as e:
