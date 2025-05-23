@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import model_loader
 import logging
+import torch
 
 from prompts import prompt_compression
 # 로깅 설정
@@ -28,7 +29,7 @@ def compress_article(file_name: str):
     # 모델 로드하기 (llama3ko)
     try:
         logging.info("기사 압축에 사용할 LLM 모델을 로드합니다.")
-        model, _ = model_loader.llama3Ko_loader()
+        model, tokenizer = model_loader.llama3Ko_loader()
         logging.info("모델 로드 완료")
     except Exception as e:
         logging.exception("모델 로드 중 오류 발생")
@@ -36,7 +37,7 @@ def compress_article(file_name: str):
 
     # 프롬프트 불러오기 (기사 압축 프롬프트)
     try:
-        prompt = prompt_compression.base_prompt
+        prompt_template = prompt_compression.base_prompt
         logging.info("프롬프트 로드 완료")
     except Exception as e:
         logging.exception("프롬프트 로드 중 오류 발생")
@@ -51,10 +52,34 @@ def compress_article(file_name: str):
                 logging.warning(f"기사 내용이 비어있습니다. (인덱스: {idx})")
                 compressed_results.append("기사 내용 없음")
                 continue
-            input_prompt = prompt.format(news=news)
+            prompt = prompt_template.format(news=news)
+            inputs = tokenizer(
+                prompt,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=tokenizer.model_max_length,
+            )
+            input_ids = inputs['input_ids']
+            attention_mask = inputs['attention_mask']
+
+            with torch.no_grad():
+                output_ids = model.generate(
+                    input_ids,
+                    attention_mask=attention_mask,
+                    max_new_tokens=512,
+                    temperature=0.5,
+                    top_p=0.8,
+                    do_sample=True,
+                    repetition_penalty=1.15,
+                    pad_token_id=tokenizer.pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id
+                )
+
             logging.info(
                 f"{idx+1}/{len(df)}번째 기사 압축 중... (기사 길이: {len(news)}자)")
-            compressed = model.generate(input_prompt)
+            compressed = tokenizer.decode(
+                output_ids[0], skip_special_tokens=True)
             compressed_results.append(compressed)
             logging.debug(f"{idx+1}번째 기사 압축 결과: {compressed[:50]}...")
         except Exception as e:
