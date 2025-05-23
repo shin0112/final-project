@@ -46,7 +46,11 @@ def compress_article(file_name: str):
 
     for idx, row in df.iterrows():
         try:
-            article = row['article']
+            article = row['full_text']
+            if pd.isna(article):
+                logging.warning(f"기사 내용이 비어있습니다. (인덱스: {idx})")
+                compressed_results.append("기사 내용 없음")
+                continue
             input_prompt = prompt.format(article=article)
             logging.info(
                 f"{idx+1}/{len(df)}번째 기사 압축 중... (기사 길이: {len(article)}자)")
