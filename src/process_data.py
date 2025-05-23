@@ -30,6 +30,7 @@ def compress_article(file_name: str):
     try:
         logging.info("기사 압축에 사용할 LLM 모델을 로드합니다.")
         model, tokenizer = model_loader.llama3Ko_loader()
+        tokenizer.pad_token = tokenizer.eos_token
         logging.info("모델 로드 완료")
     except Exception as e:
         logging.exception("모델 로드 중 오류 발생")
