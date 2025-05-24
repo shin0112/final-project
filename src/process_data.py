@@ -118,3 +118,13 @@ def compress_article(file_name: str):
     except Exception as e:
         logging.exception("결과 저장 중 오류 발생")
         raise
+
+
+def extract_summary_only(full_output: str) -> str:
+    """
+    전체 출력 중 '[요약된 환경 관련 핵심 문장]' 이후 텍스트만 추출
+    """
+    split_token = "[요약된 환경 관련 핵심 문장]assistant"
+    if split_token in full_output:
+        return full_output.split(split_token, 1)[-1].strip()
+    return full_output.strip()  # fallback
