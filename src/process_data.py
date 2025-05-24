@@ -89,7 +89,7 @@ def compress_article(file_name: str):
 
     df['compressed_article'] = compressed_results
 
-    output_file = file_name.replace('.csv', '_compressed.csv')
+    output_file = str(file_name).replace('.csv', '_compressed.csv')
     try:
         df.to_csv(output_file, index=False)
         logging.info(f"압축 결과가 '{output_file}'에 저장되었습니다. (총 {len(df)}개 기사)")
