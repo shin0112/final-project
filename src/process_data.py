@@ -50,24 +50,43 @@ def compress_article(file_name: str):
         try:
             news = row['full_text']
             if pd.isna(news):
-                logging.warning(f"기사 내용이 비어있습니다. (인덱스: {idx})")
+                logging.warning(f"⚠️  [WARNING] 기사 내용이 비어있습니다. (인덱스: {idx})")
                 compressed_results.append("기사 내용 없음")
                 continue
+
+            logging.info("\n" + "=" * 80)
+            logging.info(f"📄 [기사 {idx + 1}/{len(df)}] 시작")
+            logging.info(f"📝 [기사 길이] {len(news)}자")
+            logging.info(f"🔍 [원문 일부] {news[:200]}...")
+            logging.info("-" * 80)
+
             prompt = prompt_template.format(news=news)
+            messages = [
+                {
+                    "role": "system",
+                    "content": "너는 환경 기사 요약 전문가야. 주어진 기사에서 환경 관련 마케팅 주장과 근거 문장만 추출해 5문장 이내로 요약해."
+                },
+                {"role": "user", "content": prompt}
+            ]
+
+            chat_prompt = tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+            )
+
             inputs = tokenizer(
-                prompt,
+                chat_prompt,
                 return_tensors="pt",
                 padding=True,
                 truncation=True,
                 max_length=tokenizer.model_max_length,
-            )
-            input_ids = inputs['input_ids']
-            attention_mask = inputs['attention_mask']
+            ).to(model.device)
 
             with torch.no_grad():
                 output_ids = model.generate(
-                    input_ids,
-                    attention_mask=attention_mask,
+                    input_ids=inputs["input_ids"],
+                    attention_mask=inputs["attention_mask"],
                     max_new_tokens=512,
                     temperature=0.5,
                     top_p=0.8,
@@ -77,14 +96,17 @@ def compress_article(file_name: str):
                     eos_token_id=tokenizer.eos_token_id
                 )
 
-            logging.info(
-                f"{idx+1}/{len(df)}번째 기사 압축 중... (기사 길이: {len(news)}자)")
             compressed = tokenizer.decode(
                 output_ids[0], skip_special_tokens=True)
+
+            logging.info("✅ [압축 결과]")
+            logging.info(compressed.strip())
+            logging.info("=" * 80)
+
             compressed_results.append(compressed)
-            logging.debug(f"{idx+1}번째 기사 압축 결과: {compressed[:50]}...")
+
         except Exception as e:
-            logging.exception(f"{idx+1}번째 기사 압축 중 오류 발생")
+            logging.exception(f"❌ [오류] {idx+1}번째 기사 압축 중 예외 발생")
             compressed_results.append("압축 실패")
 
     df['compressed_article'] = compressed_results
