@@ -22,5 +22,3 @@ base_prompt = PromptTemplate(
     template=template,
     input_variables=["news"],
 )
-
-print(template)
