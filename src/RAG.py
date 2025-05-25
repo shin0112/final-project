@@ -12,6 +12,13 @@ import vectorStore
 from prompts import prompt_v3_cot_fewshot
 from save_data import save_results
 
+# 모델 일괄 초기화
+embeddings_model = vectorStore.KoSimCSE()
+base_retriever = vectorStore.load_or_create_faiss_rerank(
+    embeddings_model=embeddings_model
+)
+reranker = vectorStore.BgeReranker(base_retriever)
+
 # Configure logging
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
@@ -58,7 +65,7 @@ def generate_answer(model, tokenizer, query, context, prompt_version="fewshot"):
         return_tensors="pt",
         padding=True,  # 단문 자동 패딩 → 길이 맞추기
         truncation=True,  # 장문 자동 잘라내기
-        max_length=4096,  # 최대 길이 설정
+        max_length=tokenizer.model_max_length,  # 최대 길이 설정
     ).to(model.device)
 
     input_ids = inputs['input_ids']
@@ -208,7 +215,7 @@ def llama3Ko(version="double", prompt_version="fewshot", news_mix=False):
     # 모델 불러오기
     model, tokenizer, rt_g, rt_l, rt_n = run_experiment(
         model_name="llama3Ko",
-        embeddings_model=vectorStore.KoSimCSE(),
+        embeddings_model=embeddings_model,
         embeddings_model_name="KoSimCSE",
         search_strategy="double",
         news_mix=news_mix,
@@ -243,7 +250,7 @@ def double_llama3Ko_not_legalize():
     # 모델 불러오기
     model, tokenizer, rt_g, rt_l, rt_n = run_experiment(
         model_name="llama3Ko",
-        embeddings_model=vectorStore.KoSimCSE(),
+        embeddings_model=embeddings_model,
         embeddings_model_name="KoSimCSE",
         search_strategy="double"
     )
@@ -316,7 +323,6 @@ def rerank_llama3Ko(prompt_version="fewshot"):
     model, tokenizer = model_loader.load_model("llama3Ko")
     tokenizer.pad_token = tokenizer.eos_token
 
-    reranker = vectorStore.BgeReranker()
     retriever = reranker.compression_retriever
 
     results = []

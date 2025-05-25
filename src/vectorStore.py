@@ -311,7 +311,7 @@ def search_with_score_filter(retriever, query, min_score=0.75, k=5):
 
 
 class BgeReranker:
-    def __init__(self):
+    def __init__(self, base_retriever):
         logging.info("BgeReranker 모델 로드 중입니다...")
         self.model = HuggingFaceCrossEncoder(
             model_name='BAAI/bge-reranker-v2-m3')
@@ -320,9 +320,7 @@ class BgeReranker:
         )
         self.compression_retriever = ContextualCompressionRetriever(
             base_compressor=self.compressor,
-            base_retriever=load_or_create_faiss_rerank(
-                KoSimCSE()
-            ).as_retriever(search_kwargs={"k": 5}),
+            base_retriever=base_retriever.as_retriever(search_kwargs={"k": 5}),
             return_source_documents=True,
             search_kwargs={"k": 2},
         )
