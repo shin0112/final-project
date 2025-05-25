@@ -28,17 +28,17 @@ def preprocess_articles(test_input, legalize=True):
 
     for idx, row in test_input.iterrows():
         # 전문 가져오기
-        raw_article = row.get("full_text", "")
+        raw_article = row.get("compressed_article", "")
         # string인지 확인
         if not isinstance(raw_article, str) or not raw_article.strip():
             logging.warning(
-                f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
+                f"[{idx}] compressed_article가 str이 아님: {type(raw_article)} → 건너뜀")
             continue
         # 법률 용어화
         if legalize:
             raw_article = legalize_query([raw_article])[0]
         # 공백 제거
-        processed.append({"full_text": raw_article})
+        processed.append({"compressed_article": raw_article})
 
     logging.info(f"[기사 전처리 완료] {len(processed)}개 문서 처리됨")
     return pd.DataFrame(processed)

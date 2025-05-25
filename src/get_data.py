@@ -21,10 +21,7 @@ def load_test_data(rows: int = None) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame containing the test data.
     """
-    process_data.compress_article(test_input_path)
-
-    if not test_input_c_path.exists():
-        raise FileNotFoundError(f"File not found: {test_input_c_path}")
+    process_data.compress_article(test_input_path, test_input_c_path)
 
     df = pd.read_csv(test_input_c_path, encoding='utf-8')
     return df.head(rows) if rows else df
@@ -33,14 +30,14 @@ def load_test_data(rows: int = None) -> pd.DataFrame:
 def load_data(legalize: bool = True):
     # get input data 10개
     test_input = load_test_data(3)
-    test_input = test_input.dropna(subset=["full_text"])
+    test_input = test_input.dropna(subset=["compressed_article"])
 
     logging.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")
 
     test_input = query_processor.preprocess_articles(test_input, legalize)
 
     if not test_input.empty:
-        logging.info(f"[확인] {test_input['full_text'].iloc[0][:1000]}")
+        logging.info(f"[확인] {test_input['compressed_article'].iloc[0][:1000]}")
     else:
         logging.warning("⚠ 처리된 문서가 없습니다!")
 

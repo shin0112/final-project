@@ -12,15 +12,15 @@ logging.basicConfig(
 )
 
 
-def compress_article(file_name: str):
+def compress_article(origin_file: str, processed_file: str):
     # 파일 경로 확인
-    if not os.path.exists(file_name):
-        logging.error(f"입력 파일 '{file_name}'을(를) 찾을 수 없습니다.")
-        raise FileNotFoundError(f"{file_name} 파일을 찾을 수 없습니다.")
+    if os.path.exists(processed_file):
+        logging.warning(f"'{processed_file}' 파일이 이미 존재합니다. 덮어쓰지 않습니다.")
+        return
 
-    logging.info(f"입력 파일 '{file_name}'을(를) 불러옵니다.")
+    logging.info(f"입력 파일 '{origin_file}'을(를) 불러옵니다.")
     try:
-        df = pd.read_csv(file_name)
+        df = pd.read_csv(origin_file)
         logging.info(f"CSV 파일 로드 성공: {df.shape[0]}개의 행, {df.shape[1]}개의 열")
     except Exception as e:
         logging.exception("CSV 파일을 불러오는 중 오류 발생")
@@ -111,7 +111,7 @@ def compress_article(file_name: str):
 
     df['compressed_article'] = compressed_results
 
-    output_file = str(file_name).replace('.csv', '_compressed.csv')
+    output_file = str(origin_file).replace('.csv', '_compressed.csv')
     try:
         df.to_csv(output_file, index=False)
         logging.info(f"압축 결과가 '{output_file}'에 저장되었습니다. (총 {len(df)}개 기사)")
