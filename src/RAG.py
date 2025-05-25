@@ -17,7 +17,7 @@ embeddings_model = vectorStore.KoSimCSE()
 base_retriever = vectorStore.load_or_create_faiss_rerank(
     embeddings_model=embeddings_model
 )
-reranker = vectorStore.BgeReranker(base_retriever)
+reranker = vectorStore.KoreanReranker(base_retriever)
 
 # Configure logging
 for handler in logging.root.handlers[:]:
@@ -329,7 +329,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
     test_input = get_data.load_data()
 
     for idx, row in test_input.iterrows():
-        raw_article = row['full_text']
+        raw_article = row['compressed_article']
 
         if not isinstance(raw_article, str):
             logging.warning(
@@ -402,7 +402,7 @@ def summarize_answers(answers):
 def llama3Ko_article_level(prompt_version="fewshot"):
     model, tokenizer = model_loader.load_model("llama3Ko")
     tokenizer.pad_token = tokenizer.eos_token
-    retriever = vectorStore.BgeReranker().compression_retriever
+    retriever = reranker.compression_retriever
 
     test_input = get_data.load_data()
     final_results = []
@@ -471,11 +471,11 @@ if __name__ == "__main__":
     # llama3Ko(version="single", prompt_version="base")
     # double_llama3Ko_not_legalize()
 
-    # rerank_llama3Ko(prompt_version="oneshot")
-    # rerank_llama3Ko(prompt_version="base")
+    rerank_llama3Ko(prompt_version="oneshot")
+    rerank_llama3Ko(prompt_version="base")
 
-    llama3Ko_article_level(prompt_version="oneshot")
-    llama3Ko_article_level(prompt_version="base")
+    # llama3Ko_article_level(prompt_version="oneshot")
+    # llama3Ko_article_level(prompt_version="base")
 
     # logging.info("유사도 평가 도입")
     # logging.info("[RUN] double + base (news 분리)")
