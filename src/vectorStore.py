@@ -325,3 +325,20 @@ class BgeReranker:
             search_kwargs={"k": 2},
         )
         logging.info("BgeReranker 모델 로드 완료!")
+
+
+class KoreanReranker:
+    def __init__(self, base_retriever):
+        logging.info("KoreanReranker 모델 로드 중입니다...")
+        self.model = HuggingFaceCrossEncoder(
+            model_name='Dongjin-kr/ko-reranker')
+        self.compressor = CrossEncoderReranker(
+            model=self.model,
+        )
+        self.compression_retriever = ContextualCompressionRetriever(
+            base_compressor=self.compressor,
+            base_retriever=base_retriever.as_retriever(search_kwargs={"k": 5}),
+            return_source_documents=True,
+            search_kwargs={"k": 2},
+        )
+        logging.info("KoreanReranker 모델 로드 완료!")
