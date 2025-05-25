@@ -103,7 +103,7 @@ def compress_article(file_name: str):
             logging.info(compressed.strip())
             logging.info("=" * 80)
 
-            compressed_results.append(compressed)
+            compressed_results.append(extract_summary_only(compressed))
 
         except Exception as e:
             logging.exception(f"❌ [오류] {idx+1}번째 기사 압축 중 예외 발생")
