@@ -2,7 +2,7 @@
 .venv
 .vscode
 config/
-src/__pycache__
+**/__pycache__
 src/start.sh
 .env
 logs/
