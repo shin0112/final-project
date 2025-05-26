@@ -369,6 +369,11 @@ def rerank_llama3Ko(prompt_version="fewshot"):
         prompt_version=prompt_version
     )
 
+    save_results(
+        results=results,
+        test_input_df=test_input,
+        filename=f"llama3Ko_rerank_{prompt_version}"
+    )
     logging.info("llama3Ko 모델과 rerank retriever을 사용한 그린워싱 판별 종료")
 
 
