@@ -146,11 +146,11 @@ def run_model(model,
     test_input = get_data.load_data()
 
     for idx, row in test_input.iterrows():
-        raw_article = row['full_text']
+        raw_article = row['compressed_article']
 
         if not isinstance(raw_article, str):
             logging.warning(
-                f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
+                f"[{idx}] compressed_article가 str이 아님: {type(raw_article)} → 건너뜀")
             continue
 
         article = raw_article.strip()
@@ -330,11 +330,6 @@ def rerank_llama3Ko(prompt_version="fewshot"):
 
     for idx, row in test_input.iterrows():
         raw_article = row['compressed_article']
-
-        if not isinstance(raw_article, str):
-            logging.warning(
-                f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
-            continue
 
         article = raw_article.strip()
 
