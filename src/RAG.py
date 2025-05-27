@@ -9,7 +9,7 @@ import get_data
 import model_loader
 import query_processor
 import vectorStore
-from prompts import prompt_v3_cot_fewshot
+from prompts import prompt_v3_cot_fewshot, prompt_v4_cot_news_oneshot
 from save_data import save_results
 
 # 모델 일괄 초기화
@@ -35,6 +35,8 @@ def load_prompt(version="fewshot"):
         return prompt_v3_cot_fewshot.fewShot_prompt
     elif version == "oneshot":
         return prompt_v3_cot_fewshot.one_shot_example_template
+    elif version == "v4":
+        return prompt_v4_cot_news_oneshot.base_prompt
 
 
 def logging_result(results):
@@ -55,9 +57,22 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
     logging.info(f"  프롬프트 버전: {prompt_version}")
 
 
-def generate_answer(model, tokenizer, query, context, prompt_version="fewshot"):
+def generate_answer(model, tokenizer, query, context, prompt_version="fewshot", rt_n=None):
     prompt_template = load_prompt(prompt_version)
-    prompt = prompt_template.format(query=query, context=context)
+    if prompt_version == "v4":
+        example_docs = rt_n.vectorstore.similarity_search(query, k=1)
+        example_block = query_processor.build_example_block(
+            example_docs, tokenizer, max_tokens=500)
+        context_block = query_processor.truncate_context(
+            context, tokenizer, max_tokens=1000)
+
+        prompt = prompt_template.format(
+            query=query,
+            context=context_block,
+            news=example_block
+        )
+    else:
+        prompt = prompt_template.format(query=query, context=context)
     # logging.info(f"[프롬프트] 설정 확인: {prompt[:800]}")
 
     inputs = tokenizer(
@@ -343,13 +358,24 @@ def rerank_llama3Ko(prompt_version="fewshot"):
         logging.info(f"[검색된 문서]")
         for i, doc in enumerate(all_docs, 1):
             logging.info(f"  [{i}] {doc.page_content}...")
+        news_store = vectorStore.load_or_create_faiss_news(embeddings_model)
+
+        rt_n = None
+        if prompt_version == "v4":
+            logging.info(f"[3차 검색 뉴스]")
+            # 유사도 검색으로 뉴스 문서 가져오기
+            rt_n = news_store.as_retriever(
+                search_type="similarity",
+                search_kwargs={"k": 2}
+            )
 
         answer = generate_answer(
             model=model,
             tokenizer=tokenizer,
             query=article,
             context=context,
-            prompt_version=prompt_version
+            prompt_version=prompt_version,
+            rt_n=rt_n
         )
         logging.info(f"[답변 생성] {answer}")
         logging.info(f"[답변 종료]")
@@ -471,8 +497,8 @@ if __name__ == "__main__":
     # llama3Ko(version="single", prompt_version="base")
     # double_llama3Ko_not_legalize()
 
-    rerank_llama3Ko(prompt_version="oneshot")
-    rerank_llama3Ko(prompt_version="base")
+    # rerank_llama3Ko(prompt_version="oneshot")
+    rerank_llama3Ko(prompt_version="v4")
 
     # llama3Ko_article_level(prompt_version="oneshot")
     # llama3Ko_article_level(prompt_version="base")
