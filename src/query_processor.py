@@ -199,11 +199,10 @@ def build_example_block(example_docs, tokenizer, max_tokens=500):
     return block.strip()
 
 
-def truncate_context(docs, tokenizer, max_tokens=1000):
+def truncate_context(text_blocks: list[str], tokenizer, max_tokens=1000):
     context = ""
     used_tokens = 0
-    for doc in docs:
-        text = doc.page_content
+    for text in text_blocks:
         tokens = num_tokens(text, tokenizer)
         if used_tokens + tokens > max_tokens:
             break

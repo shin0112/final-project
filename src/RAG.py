@@ -59,8 +59,12 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
 
 def generate_answer(model, tokenizer, query, context, prompt_version="fewshot", rt_n=None):
     prompt_template = load_prompt(prompt_version)
+
     if prompt_version == "v4":
+        # 예시 문서 가져오기 - 문서 1개
         example_docs = rt_n.vectorstore.similarity_search(query, k=1)
+
+        # 예시, 가이드라인 문서 블록 만들고 토큰 단위로 자르기
         example_block = query_processor.build_example_block(
             example_docs, tokenizer, max_tokens=500)
         context_block = query_processor.truncate_context(
@@ -353,7 +357,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
 
         logging.info(f"[guideline&law 문서 검색 + 임베딩]")
         all_docs = retriever.invoke(article)
-        context = "\n".join([doc.page_content for doc in all_docs])[:1000]
+        context_list = [doc.page_content for doc in all_docs]
 
         logging.info(f"[검색된 문서]")
         for i, doc in enumerate(all_docs, 1):
@@ -362,7 +366,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
 
         rt_n = None
         if prompt_version == "v4":
-            logging.info(f"[3차 검색 뉴스]")
+            logging.info(f"[뉴스 데이터 검색]")
             # 유사도 검색으로 뉴스 문서 가져오기
             rt_n = news_store.as_retriever(
                 search_type="similarity",
@@ -373,7 +377,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
             model=model,
             tokenizer=tokenizer,
             query=article,
-            context=context,
+            context=context_list,
             prompt_version=prompt_version,
             rt_n=rt_n
         )
@@ -382,7 +386,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
 
         results.append({
             "article": article,
-            "context": context,
+            "context": context_list,
             "answer": answer
         })
 
