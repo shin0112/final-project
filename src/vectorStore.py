@@ -23,7 +23,7 @@ RERANK_FAISS_PATH = FAISS_PATH / "rerank"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'config' / 'law_file_paths.json'
 NEWS_FAISS_PATH = FAISS_PATH / "news"
 NEWS_PATH = Path(__file__).parent.parent/'data' / \
-    'greenwashing'/'greenwashing_train.csv'
+    'greenwashing'/'guideline_example.csv'
 GUIDELINE_NEWS_FAISS_PATH = FAISS_PATH / "guideline_news"
 # PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
 
@@ -225,7 +225,7 @@ def load_or_create_faiss_news(embedding_model):
 
 
 def get_news_data():
-    logging.info("뉴스 기사 CSV 데이터 불러오기")
+    logging.info("예시용 CSV 데이터 불러오기 - guideline_example.csv")
     df = pd.read_csv(NEWS_PATH)
     df = df[['title', 'content', 'greenwashing_level', 'full_text']].copy()
     df.rename(columns={
@@ -238,16 +238,18 @@ def get_news_data():
 
     # 메타데이터
     df['metadata'] = df.apply(lambda row: {
-        'title': row['title'],
-        'summary': row['summary'],
-        'label': row['label']
+        'label': row['label'],
+        'reason': row['reason_summary'],
+        'solution': row['solution'],
+        'law': row.get('guideline_article', '-'),
+        'type': 'example'
     }, axis=1)
 
     documents = [
         Document(page_content=row['text'], metadata=row['metadata'])
         for _, row in df.iterrows()
     ]
-
+    logging.info(f"✅ 예시 문서 {len(documents)}건 로드 완료")
     return documents
 
 
