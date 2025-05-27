@@ -29,8 +29,7 @@ output = """
 
 goal = """
 ==================== 예시 시작 ====================
-query: {news}
-answer: {metadata}
+{news}
 ==================== 예시 끝 ====================
 
 위 예시는 참고용입니다. 이제 실제 기사에 대한 분석을 시작하세요.
@@ -47,7 +46,7 @@ template = output + cot + role + goal
 
 base_prompt = PromptTemplate(
     template=template,
-    input_variables=["news", "metadata", "query", "context"],
+    input_variables=["news", "query", "context"],
 )
 
 print(template)
