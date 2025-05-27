@@ -170,7 +170,7 @@ def is_environment_related(sentence):
     return has_keyword or has_number
 
 
-def example_to_prompt_format(doc) -> str:
+def example_to_prompt_format_v4(doc) -> str:
     label = "그린워싱 있음" if doc.metadata["label"] == 1 else "그린워싱 없음"
     reason = doc.metadata.get("reason", "-")
     solution = doc.metadata.get("solution", "-")
@@ -180,3 +180,33 @@ answer:
 1. 판단: {label}  
 2. 근거: {reason}  
 3. 해결방안: {solution}"""
+
+
+def num_tokens(text: str, tokenizer, buffer=0) -> int:
+    return len(tokenizer.encode(text)) + buffer
+
+
+def build_example_block(example_docs, tokenizer, max_tokens=500):
+    block = ""
+    used_tokens = 0
+    for doc in example_docs:
+        entry = example_to_prompt_format_v4(doc)
+        tokens = num_tokens(entry, tokenizer)
+        if used_tokens + tokens > max_tokens:
+            break
+        block += entry + "\n\n"
+        used_tokens += tokens
+    return block.strip()
+
+
+def truncate_context(docs, tokenizer, max_tokens=1000):
+    context = ""
+    used_tokens = 0
+    for doc in docs:
+        text = doc.page_content
+        tokens = num_tokens(text, tokenizer)
+        if used_tokens + tokens > max_tokens:
+            break
+        context += text + "\n"
+        used_tokens += tokens
+    return context.strip()
