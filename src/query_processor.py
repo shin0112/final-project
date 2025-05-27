@@ -168,3 +168,15 @@ def is_environment_related(sentence):
     has_keyword = any(keyword in sentence for keyword in KEYWORDS)
     has_number = bool(re.search(r'\d+', sentence))
     return has_keyword or has_number
+
+
+def example_to_prompt_format(doc) -> str:
+    label = "그린워싱 있음" if doc.metadata["label"] == 1 else "그린워싱 없음"
+    reason = doc.metadata.get("reason", "-")
+    solution = doc.metadata.get("solution", "-")
+
+    return f"""query: {doc.page_content.strip()}
+answer:
+1. 판단: {label}  
+2. 근거: {reason}  
+3. 해결방안: {solution}"""
