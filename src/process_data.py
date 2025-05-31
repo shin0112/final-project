@@ -26,6 +26,13 @@ def compress_article(origin_file: str, processed_file: str):
         logging.exception("CSV 파일을 불러오는 중 오류 발생")
         raise
 
+    # 인증 마크 컬럼 추가
+    if 'en_mark' not in df.columns:
+        logging.error("CSV 파일에 'en_mark' 컬럼이 없습니다. 인증 마크 정보를 추가해주세요.")
+        raise ValueError("CSV 파일에 'en_mark' 컬럼이 없습니다.")
+
+    df["certification_type"] = df["en_mark"].apply(normalize_cert_type)
+
     # 모델 로드하기 (llama3ko)
     try:
         logging.info("기사 압축에 사용할 LLM 모델을 로드합니다.")
@@ -52,6 +59,10 @@ def compress_article(origin_file: str, processed_file: str):
             if pd.isna(news):
                 logging.warning(f"⚠️  [WARNING] 기사 내용이 비어있습니다. (인덱스: {idx})")
                 compressed_results.append("기사 내용 없음")
+                continue
+
+            if len(news) < 700:
+                compressed_results.append(news)
                 continue
 
             logging.info("\n" + "=" * 80)
@@ -128,3 +139,18 @@ def extract_summary_only(full_output: str) -> str:
     if split_token in full_output:
         return full_output.split(split_token, 1)[-1].strip()
     return full_output.strip()  # fallback
+
+
+def normalize_cert_type(text):
+    if not isinstance(text, str):
+        return "없음"
+    if "탄소발자국" in text:
+        return "탄소발자국"
+    elif "에너지" in text:
+        return "에너지절약"
+    elif "환경표지" in text or "환경부 인증" in text:
+        return "환경표지"
+    elif "없음" in text:
+        return "없음"
+    else:
+        return "기타"
