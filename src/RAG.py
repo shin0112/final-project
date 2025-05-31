@@ -57,13 +57,13 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
     logging.info(f"  프롬프트 버전: {prompt_version}")
 
 
-def generate_answer(model, tokenizer, query, context, prompt_version="fewshot", rt_n=None):
+def generate_answer(model, tokenizer, query, context, certification_type="", prompt_version="fewshot", rt_n=None):
     prompt_template = load_prompt(prompt_version)
 
     if prompt_version == "v4":
         # 예시 문서 가져오기 - 문서 1개
         example_docs = rt_n.vectorstore.similarity_search(query, k=1)
-
+        logging.info(f"[뉴스 예시 문서] {example_docs[0].page_content[:200]}...")
         # 예시, 가이드라인 문서 블록 만들고 토큰 단위로 자르기
         example_block = query_processor.build_example_block(
             example_docs, tokenizer, max_tokens=500)
@@ -73,11 +73,14 @@ def generate_answer(model, tokenizer, query, context, prompt_version="fewshot", 
         prompt = prompt_template.format(
             query=query,
             context=context_block,
-            news=example_block
+            example=example_block,
+            certification_type=certification_type
         )
     else:
         prompt = prompt_template.format(query=query, context=context)
     # logging.info(f"[프롬프트] 설정 확인: {prompt[:800]}")
+
+    logging.info(f"[프롬프트 전문] {prompt}")
 
     inputs = tokenizer(
         prompt,
@@ -349,6 +352,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
 
     for idx, row in test_input.iterrows():
         raw_article = row['compressed_article']
+        certification_type = row['certification_type']
 
         article = raw_article.strip()
 
@@ -378,6 +382,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
             tokenizer=tokenizer,
             query=article,
             context=context_list,
+            certification_type=certification_type,
             prompt_version=prompt_version,
             rt_n=rt_n
         )
