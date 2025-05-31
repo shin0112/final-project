@@ -32,6 +32,9 @@ def compress_article(origin_file: str, processed_file: str):
         raise ValueError("CSV 파일에 'en_mark' 컬럼이 없습니다.")
 
     df["certification_type"] = df["en_mark"].apply(normalize_cert_type)
+    logging.info("인증 마크 컬럼 추가 완료")
+    logging.info(f"인증 마크 종류: {df['certification_type'].unique()}")
+    logging.info(f"상위 5개 인증 마크:\n{df['certification_type'].head(5)}")
 
     # 모델 로드하기 (llama3ko)
     try:
@@ -122,7 +125,7 @@ def compress_article(origin_file: str, processed_file: str):
 
     df['compressed_article'] = compressed_results
 
-    output_file = str(origin_file).replace('.csv', '_compressed.csv')
+    output_file = processed_file
     try:
         df.to_csv(output_file, index=False)
         logging.info(f"압축 결과가 '{output_file}'에 저장되었습니다. (총 {len(df)}개 기사)")
