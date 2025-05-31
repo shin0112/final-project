@@ -201,7 +201,7 @@ def load_or_create_faiss_news(embedding_model):
         logging.info("뉴스 벡터 DB 로드 완료!")
         return store
 
-    documents = get_news_data()
+    documents = get_example_data()
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
@@ -224,12 +224,13 @@ def load_or_create_faiss_news(embedding_model):
     return store
 
 
-def get_news_data():
+def get_example_data():
     logging.info("예시용 CSV 데이터 불러오기 - guideline_example.csv")
     df = pd.read_csv(NEWS_PATH)
-    df = df[['title', 'content', 'greenwashing_level', 'full_text']].copy()
+    df = df[['content', 'greenwashing_level', 'full_text',
+             'solution', 'guideline_article']].copy()
+
     df.rename(columns={
-        'title': 'title',
         'content': 'summary',
         'greenwashing_level': 'label',
         'full_text': 'text'
@@ -239,7 +240,7 @@ def get_news_data():
     # 메타데이터
     df['metadata'] = df.apply(lambda row: {
         'label': row['label'],
-        'reason': row['reason_summary'],
+        'reason': row['summary'],
         'solution': row['solution'],
         'law': row.get('guideline_article', '-'),
         'type': 'example'
@@ -271,7 +272,7 @@ def load_or_create_faiss_guideline_and_news(embedding_model):
     for doc in guideline_docs:
         for page in doc:
             page.metadata["type"] = "guideline"
-    news_docs = get_news_data()
+    news_docs = get_example_data()
 
     flat_guideline_docs = list(chain.from_iterable(guideline_docs))
     combined_docs = flat_guideline_docs + news_docs
