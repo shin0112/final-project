@@ -25,7 +25,7 @@ output = """
 
 goal = """
 ==================== 예시 시작 ====================
-{news}
+{example}
 ==================== 예시 끝 ====================
 
 ## 기사 본문
@@ -50,7 +50,7 @@ template = role + cot + output + goal
 
 base_prompt = PromptTemplate(
     template=template,
-    input_variables=["news", "query", "certification_type", "context"],
+    input_variables=["example", "query", "certification_type", "context"],
 )
 
 print(template)
