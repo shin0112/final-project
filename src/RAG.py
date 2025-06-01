@@ -4,6 +4,7 @@ import logging
 import torch
 import sys
 import re
+import time
 
 import get_data
 import model_loader
@@ -93,6 +94,7 @@ def generate_answer(model, tokenizer, query, context, ct="", prompt_version="few
     input_ids = inputs['input_ids']
     attention_mask = inputs['attention_mask']
 
+    start_gen = time.time()
     with torch.no_grad():
         output_ids = model.generate(
             input_ids,
@@ -105,9 +107,10 @@ def generate_answer(model, tokenizer, query, context, ct="", prompt_version="few
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id
         )
-
+    generation_time = time.time() - start_gen
     output_text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-    return output_text[len(prompt):].strip()
+
+    return output_text[len(prompt):].strip(), generation_time
 
 
 def run_experiment(model_name,
@@ -206,7 +209,7 @@ def run_model(model,
                 rt_n, article, min_score=0.75)
             context = "\n".join([doc.page_content for doc in news])[:1000]
 
-        answer = generate_answer(
+        answer, _ = generate_answer(
             model=model,
             tokenizer=tokenizer,
             query=article,
@@ -311,7 +314,7 @@ def double_llama3Ko_not_legalize():
             for i, doc in enumerate(law, 1):
                 logging.info(f"  [{i}] {doc.page_content}...")
 
-        answer = generate_answer(
+        answer, _ = generate_answer(
             model=model,
             tokenizer=tokenizer,
             query=article,
@@ -360,7 +363,11 @@ def rerank_llama3Ko(prompt_version="fewshot"):
         logging.info(f"[처리 기사 내용] {article}")
 
         logging.info(f"[guideline&law 문서 검색 + 임베딩]")
+        start_retrieval = time().time()
         all_docs = retriever.invoke(article)
+        retriever_time = time.time() - start_retrieval
+        logging.info(f"[문서 검색 완료] 소요 시간: {retriever_time:.2f}초")
+
         context_list = [doc.page_content for doc in all_docs]
 
         logging.info(f"[검색된 문서]")
@@ -377,7 +384,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
                 search_kwargs={"k": 2}
             )
 
-        answer = generate_answer(
+        answer, generate_time = generate_answer(
             model=model,
             tokenizer=tokenizer,
             query=article,
@@ -392,7 +399,9 @@ def rerank_llama3Ko(prompt_version="fewshot"):
         results.append({
             "article": article,
             "context": context_list,
-            "answer": answer
+            "answer": answer,
+            "retriever_time": round(retriever_time, 3),
+            "generate_time": round(generate_time, 3)
         })
 
     logging_result(results)
@@ -467,7 +476,7 @@ def llama3Ko_article_level(prompt_version="fewshot"):
             context = "\n".join(
                 [doc.page_content for doc in context_docs])[:1000]
 
-            answer = generate_answer(
+            answer, _ = generate_answer(
                 model, tokenizer, chunk, context, prompt_version=prompt_version)
             logging.info(f"[답변 생성] {answer}")
             logging.info(f"[답변 종료]")
