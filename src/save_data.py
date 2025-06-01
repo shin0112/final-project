@@ -134,7 +134,8 @@ def save_and_evaluate_results(
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{filename}_{timestamp}.csv"
-    output_path = Path.cwd() / "results" / filename
+
+    output_path = Path(__file__).parent.parent / "results" / filename
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     df_result = pd.DataFrame(results)
