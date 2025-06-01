@@ -363,7 +363,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
         logging.info(f"[처리 기사 내용] {article}")
 
         logging.info(f"[guideline&law 문서 검색 + 임베딩]")
-        start_retrieval = time().time()
+        start_retrieval = time.time()
         all_docs = retriever.invoke(article)
         retriever_time = time.time() - start_retrieval
         logging.info(f"[문서 검색 완료] 소요 시간: {retriever_time:.2f}초")
