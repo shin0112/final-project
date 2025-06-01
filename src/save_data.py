@@ -24,18 +24,15 @@ def save_results(results, test_input_df=None, filename="model_output"):
 
     # 원본 기사 및 라벨 복사
     if test_input_df is not None:
-        if "full_text" in test_input_df.columns:
-            df_result["original_text"] = test_input_df["full_text"].values[:len(
-                df_result)]
         if "greenwashing_level" in test_input_df.columns:
-            df_result["label"] = test_input_df["greenwashing_level"].values[:len(
+            df_result["greenwashing_level"] = test_input_df["greenwashing_level"].values[:len(
                 df_result)]
 
     # 모델 응답 파싱 및 평가
     parsed_list = [parse_model_answer(r["answer"]) for r in results]
     df_parsed = pd.DataFrame(parsed_list)
     df_result = pd.concat([df_result, df_parsed], axis=1)
-    if "label" in df_result.columns:
+    if "greenwashing_level" in df_result.columns:
         df_result["is_correct"] = df_result.apply(
             is_prediction_correct, axis=1)
 
@@ -43,16 +40,16 @@ def save_results(results, test_input_df=None, filename="model_output"):
     logging.info(f"[결과 저장 완료] {output_path.resolve()}")
 
 
-def is_prediction_correct(row, label_col="label") -> bool | None:
+def is_prediction_correct(row, label_col="greenwashing_level") -> bool | None:
     if not row["valid_format"] or row["judgement"] is None:
         return None
 
     judgement = row["judgement"]
-    label = row[label_col]
+    greenwashing_level = row[label_col]
 
-    if label == 1 and "없음" in judgement:
+    if greenwashing_level == 1 and "없음" in judgement:
         return False
-    if label == 0 and "있음" in judgement:
+    if greenwashing_level == 0 and "있음" in judgement:
         return False
     return True
 
@@ -85,24 +82,24 @@ def parse_model_answer(answer: str) -> dict:
         }
 
 
-def is_prediction_correct_fixed(row, label_col="label") -> bool | None:
+def is_prediction_correct_fixed(row, label_col="greenwashing_level") -> bool | None:
     if not row["valid_format"] or row["judgement"] is None:
         return None
 
     judgement = row["judgement"]
-    label = row[label_col]
+    greenwashing_level = row[label_col]
 
     if not isinstance(judgement, str):
         return None
 
-    if label == 1 and "없음" in judgement:
+    if greenwashing_level == 1 and "없음" in judgement:
         return False
-    if label == 0 and ("있음" in judgement or "의심" in judgement):
+    if greenwashing_level == 0 and ("있음" in judgement or "의심" in judgement):
         return False
     return True
 
 
-def evaluate_model(df: pd.DataFrame, label_col="label", judgement_col="judgement") -> tuple[pd.DataFrame, pd.DataFrame]:
+def evaluate_model(df: pd.DataFrame, label_col="greenwashing_level", judgement_col="judgement") -> tuple[pd.DataFrame, pd.DataFrame]:
     filtered_df = df[df[label_col] != 0.5].copy()
     filtered_df[label_col] = filtered_df[label_col].astype(int)
 
@@ -141,18 +138,15 @@ def save_and_evaluate_results(
     df_result = pd.DataFrame(results)
 
     if test_input_df is not None:
-        if "full_text" in test_input_df.columns:
-            df_result["original_text"] = test_input_df["full_text"].values[:len(
-                df_result)]
         if "greenwashing_level" in test_input_df.columns:
-            df_result["label"] = test_input_df["greenwashing_level"].values[:len(
+            df_result["greenwashing_level"] = test_input_df["greenwashing_level"].values[:len(
                 df_result)]
 
     parsed_list = [parse_model_answer(r["answer"]) for r in results]
     df_parsed = pd.DataFrame(parsed_list)
     df_result = pd.concat([df_result, df_parsed], axis=1)
 
-    if "label" in df_result.columns:
+    if "greenwashing_level" in df_result.columns:
         df_result["is_correct"] = df_result.apply(
             is_prediction_correct_fixed, axis=1)
 
@@ -164,5 +158,5 @@ def save_and_evaluate_results(
     logging.info(f"[결과 저장 완료] {output_path.resolve()}")
 
     report_df, conf_matrix_df = evaluate_model(
-        df_result, label_col="label", judgement_col="judgement")
+        df_result, label_col="greenwashing_level", judgement_col="judgement")
     return report_df, conf_matrix_df
