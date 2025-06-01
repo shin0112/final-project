@@ -38,10 +38,11 @@ def preprocess_articles(test_input, legalize=True):
         if legalize:
             raw_article = legalize_query([raw_article])[0]
         # 공백 제거
-        processed.append({"compressed_article": raw_article})
+        processed.append(raw_article)
 
     logging.info(f"[기사 전처리 완료] {len(processed)}개 문서 처리됨")
-    return pd.DataFrame(processed)
+    test_input['compressed_article'] = processed
+    return test_input
 
 
 def legalize_query(sentences: list[str]) -> list[str]:

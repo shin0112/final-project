@@ -10,7 +10,7 @@ import model_loader
 import query_processor
 import vectorStore
 from prompts import prompt_v3_cot_fewshot, prompt_v4_cot_news_oneshot
-from save_data import save_results
+from save_data import save_and_evaluate_results
 
 # 모델 일괄 초기화
 embeddings_model = vectorStore.KoSimCSE()
@@ -57,7 +57,7 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
     logging.info(f"  프롬프트 버전: {prompt_version}")
 
 
-def generate_answer(model, tokenizer, query, context, certification_type="", prompt_version="fewshot", rt_n=None):
+def generate_answer(model, tokenizer, query, context, ct="", prompt_version="fewshot", rt_n=None):
     prompt_template = load_prompt(prompt_version)
 
     if prompt_version == "v4":
@@ -74,7 +74,7 @@ def generate_answer(model, tokenizer, query, context, certification_type="", pro
             query=query,
             context=context_block,
             example=example_block,
-            certification_type=certification_type
+            certification_type=ct
         )
     else:
         prompt = prompt_template.format(query=query, context=context)
@@ -223,10 +223,10 @@ def run_model(model,
         })
 
     logging_result(results)
-    save_results(results,
-                 test_input_df=test_input,
-                 filename=f"llama3Ko_{version}_{prompt_version}"
-                 )
+    save_and_evaluate_results(results,
+                              test_input_df=test_input,
+                              filename=f"llama3Ko_{version}_{prompt_version}"
+                              )
     return test_input
 
 
@@ -352,7 +352,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
 
     for idx, row in test_input.iterrows():
         raw_article = row['compressed_article']
-        certification_type = row['certification_type']
+        ct = row['ct']
 
         article = raw_article.strip()
 
@@ -382,7 +382,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
             tokenizer=tokenizer,
             query=article,
             context=context_list,
-            certification_type=certification_type,
+            ct=ct,
             prompt_version=prompt_version,
             rt_n=rt_n
         )
@@ -404,7 +404,7 @@ def rerank_llama3Ko(prompt_version="fewshot"):
         prompt_version=prompt_version
     )
 
-    save_results(
+    save_and_evaluate_results(
         results=results,
         test_input_df=test_input,
         filename=f"llama3Ko_rerank_{prompt_version}"
@@ -492,7 +492,7 @@ def llama3Ko_article_level(prompt_version="fewshot"):
             "answer": full_answer
         })
 
-    save_results(
+    save_and_evaluate_results(
         final_results,
         test_input_df=test_input,
         filename=f"llama3Ko_article_level_{prompt_version}"

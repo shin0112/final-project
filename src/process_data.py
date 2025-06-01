@@ -31,11 +31,6 @@ def compress_article(origin_file: str, processed_file: str):
         logging.error("CSV 파일에 'en_mark' 컬럼이 없습니다. 인증 마크 정보를 추가해주세요.")
         raise ValueError("CSV 파일에 'en_mark' 컬럼이 없습니다.")
 
-    df["certification_type"] = df["en_mark"].apply(normalize_cert_type)
-    logging.info("인증 마크 컬럼 추가 완료")
-    logging.info(f"인증 마크 종류: {df['certification_type'].unique()}")
-    logging.info(f"상위 5개 인증 마크:\n{df['certification_type'].head(5)}")
-
     # 모델 로드하기 (llama3ko)
     try:
         logging.info("기사 압축에 사용할 LLM 모델을 로드합니다.")
@@ -55,6 +50,7 @@ def compress_article(origin_file: str, processed_file: str):
         raise
 
     compressed_results = []
+    ct_results = []
 
     for idx, row in df.iterrows():
         try:
@@ -63,6 +59,9 @@ def compress_article(origin_file: str, processed_file: str):
                 logging.warning(f"⚠️  [WARNING] 기사 내용이 비어있습니다. (인덱스: {idx})")
                 compressed_results.append("기사 내용 없음")
                 continue
+
+            # 인증 마크 정규화
+            ct_results.append(normalize_cert_type(row['en_mark']))
 
             if len(news) < 700:
                 compressed_results.append(news)
@@ -124,6 +123,9 @@ def compress_article(origin_file: str, processed_file: str):
             compressed_results.append("압축 실패")
 
     df['compressed_article'] = compressed_results
+    df['ct'] = ct_results
+    logging.info("모든 기사 압축 완료")
+    logging.info(df.head())
 
     output_file = processed_file
     try:
