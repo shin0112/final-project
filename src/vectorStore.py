@@ -294,16 +294,6 @@ def load_or_create_faiss_guideline_and_news(embedding_model):
 
     return store
 
-
-def search_with_score_filter(retriever, query, min_score=0.75, k=5):
-    results = retriever.vectorstore.similarity_search_with_score(query, k=k)
-    filtered = [
-        doc for doc, score in results
-        if score >= min_score
-    ]
-    return filtered
-
-
 # def search_guideline_only(retriever, query, top_k=10, min_score=0.75):
 #     results = retriever.vectorstore.similarity_search_with_score(
 #         query, k=top_k)
@@ -354,3 +344,19 @@ class KoreanReranker:
             search_kwargs={"k": 2},
         )
         logging.info("KoreanReranker 모델 로드 완료!")
+
+
+def search_with_score_filter(retriever, query, min_score=0.75, k=5):
+    results = retriever.vectorstore.similarity_search_with_score(
+        query, k=k)
+    filtered = []
+    for doc, score in results:
+        doc.metadata["score"] = score  # <-- 점수 저장
+        if score >= min_score:
+            filtered.append(doc)
+    logging.info(f"[검색 쿼리] {query}")
+    logging.info(f"[Top-{k} 유사도 결과]")
+    for doc in filtered:
+        logging.info(
+            f"  점수: {doc.metadata['score']:.4f}, 문서 일부: {doc.page_content[:80]}...")
+    return filtered
