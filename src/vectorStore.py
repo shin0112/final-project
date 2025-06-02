@@ -338,9 +338,18 @@ class KoreanReranker:
         self.compressor = CrossEncoderReranker(
             model=self.model,
         )
+
+        filtered_retriever = base_retriever.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={
+                "score_threshold": 0.75,
+                "k": 5
+            }
+        )
+
         self.compression_retriever = ContextualCompressionRetriever(
             base_compressor=self.compressor,
-            base_retriever=base_retriever.as_retriever(search_kwargs={"k": 5}),
+            base_retriever=filtered_retriever,
             return_source_documents=True,
             search_kwargs={"k": 2},
         )
