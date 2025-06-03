@@ -1,10 +1,5 @@
-
 import logging
 import torch
-import os
-from dotenv import load_dotenv
-from pathlib import Path
-from huggingface_hub import snapshot_download, login
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from mistral_inference.transformer import Transformer
@@ -13,11 +8,7 @@ from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
 from mistral_common.protocol.instruct.messages import UserMessage
 from mistral_common.protocol.instruct.request import ChatCompletionRequest
 
-load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env", override=True)
-os.environ["HF_HOME"] = "/data/wnslcosltimo12/hf_cache"
-print("🔐 HF TOKEN PREFIX:", os.environ.get("HUGGINGFACE_TOKEN")[:10])
-token = os.environ.get("HUGGINGFACE_TOKEN")
-login(token=token)
+import load_token
 
 
 def load_model(model_name):
@@ -84,8 +75,10 @@ def mistral_loader():
 def llama3Ko_loader():
     model_name = "AIDX-ktds/ktdsbaseLM-v0.14-onbased-llama3.1"
     logging.info("[모델 초기화] llama3Ko")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, token=token)
-    model = AutoModelForCausalLM.from_pretrained(model_name, token=token)
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name, token=load_token.token)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, token=load_token.token)
 
     model.eval()
     logging.info("모델과 토크나이저 초기화가 완료되었습니다!")
