@@ -3,7 +3,7 @@
 .vscode
 config/
 **/__pycache__
-src/start.sh
+src/**.sh
 .env
 logs/
 logs_backup**/
