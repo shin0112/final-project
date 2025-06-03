@@ -10,7 +10,7 @@ import get_data
 import model_loader
 import query_processor
 import vectorStore
-from prompts import prompt_v3_cot_fewshot, prompt_v4_cot_news_oneshot
+from prompts import prompt_v3_cot_fewshot, prompt_v4_cot_news_oneshot, prompt_v4_cot_news_zeroshot
 from save_data import save_and_evaluate_results
 
 # 모델 일괄 초기화
@@ -31,13 +31,18 @@ logging.basicConfig(level=logging.INFO,
 
 def load_prompt(version="fewshot"):
     if version == "base":
-        return prompt_v3_cot_fewshot.base_prompt
+        prompt = prompt_v3_cot_fewshot.base_prompt
     elif version == "fewshot":
-        return prompt_v3_cot_fewshot.fewShot_prompt
+        prompt = prompt_v3_cot_fewshot.fewShot_prompt
     elif version == "oneshot":
-        return prompt_v3_cot_fewshot.one_shot_example_template
-    elif version == "v4":
-        return prompt_v4_cot_news_oneshot.base_prompt
+        prompt = prompt_v3_cot_fewshot.one_shot_example_template
+    elif version == "v4-oneshot":
+        prompt = prompt_v4_cot_news_oneshot.base_prompt
+    elif version == "v4-zeroshot":
+        prompt = prompt_v4_cot_news_zeroshot.base_prompt
+
+    logging.info(f"[프롬프트 전문] {prompt}")
+    return prompt
 
 
 def logging_result(results):
@@ -61,22 +66,31 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
 def generate_answer(model, tokenizer, query, context, ct="", prompt_version="fewshot", rt_n=None):
     prompt_template = load_prompt(prompt_version)
 
-    if prompt_version == "v4":
+    if prompt_version[:2] == "v4":
         # 예시 문서 가져오기 - 문서 1개
-        example_docs = rt_n.vectorstore.similarity_search(query, k=1)
-        logging.info(f"[뉴스 예시 문서] {example_docs[0].page_content[:200]}...")
-        # 예시, 가이드라인 문서 블록 만들고 토큰 단위로 자르기
-        example_block = query_processor.build_example_block(
-            example_docs, tokenizer, max_tokens=500)
+        if prompt_version == "v4-oneshot":
+            example_docs = rt_n.vectorstore.similarity_search(query, k=1)
+            logging.info(f"[뉴스 예시 문서] {example_docs[0].page_content[:200]}...")
+            # 예시, 가이드라인 문서 블록 만들고 토큰 단위로 자르기
+            example_block = query_processor.build_example_block(
+                example_docs, tokenizer, max_tokens=500)
         context_block = query_processor.truncate_context(
             context, tokenizer, max_tokens=1000)
 
-        prompt = prompt_template.format(
-            query=query,
-            context=context_block,
-            example=example_block,
-            certification_type=ct
-        )
+        if prompt_version == "v4-oneshot":
+            prompt = prompt_template.format(
+                query=query,
+                context=context_block,
+                example=example_block,
+                certification_type=ct
+            )
+        else:
+            prompt = prompt_template.format(
+                query=query,
+                context=context_block,
+                certification_type=ct
+            )
+
     else:
         prompt = prompt_template.format(query=query, context=context)
     # logging.info(f"[프롬프트] 설정 확인: {prompt[:800]}")
@@ -364,7 +378,14 @@ def rerank_llama3Ko(prompt_version="fewshot"):
 
         logging.info(f"[guideline&law 문서 검색 + 임베딩]")
         start_retrieval = time.time()
-        all_docs = retriever.invoke(article)
+
+        all_docs = vectorStore.search_with_score_filter(
+            retriever=retriever.base_retriever,
+            query=article,
+            min_score=0.75,
+            k=5
+        )
+
         retriever_time = time.time() - start_retrieval
         logging.info(f"[문서 검색 완료] 소요 시간: {retriever_time:.2f}초")
 
@@ -401,7 +422,8 @@ def rerank_llama3Ko(prompt_version="fewshot"):
             "context": context_list,
             "answer": answer,
             "retriever_time": round(retriever_time, 3),
-            "generate_time": round(generate_time, 3)
+            "generate_time": round(generate_time, 3),
+            "reason_summary": row['reason_summary'],
         })
 
     logging_result(results)
@@ -516,7 +538,10 @@ if __name__ == "__main__":
     # double_llama3Ko_not_legalize()
 
     # rerank_llama3Ko(prompt_version="oneshot")
-    rerank_llama3Ko(prompt_version="v4")
+    logging.info("""
+                [실험 간단 설명] rerank로 예시 test_compressed.csv 파일 30개 랜덤 sample해서 실행시킴. 그린워싱 아님 데이터 비중 높여서 문서 재압축. v4-zeroshot 프롬프트 사용. 문서 유사도 필터링 함. 잘 검색되고 있는지 로그 추가
+                """)
+    rerank_llama3Ko(prompt_version="v4-zeroshot")
 
     # llama3Ko_article_level(prompt_version="oneshot")
     # llama3Ko_article_level(prompt_version="base")
