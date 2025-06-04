@@ -10,7 +10,7 @@ import get_data
 import model_loader
 import query_processor
 import vectorStore
-from prompts import prompt_v3_cot_fewshot, prompt_v4_cot_news_oneshot, prompt_v4_cot_news_zeroshot
+from prompts import prompt_v3_cot_fewshot, prompt_v4, prompt_v4_cot_news_oneshot
 from save_data import save_and_evaluate_results
 
 # 모델 일괄 초기화
@@ -37,9 +37,9 @@ def load_prompt(version="fewshot"):
     elif version == "oneshot":
         prompt = prompt_v3_cot_fewshot.one_shot_example_template
     elif version == "v4-oneshot":
-        prompt = prompt_v4_cot_news_oneshot.base_prompt
+        prompt = prompt_v4.prompt_oneshot
     elif version == "v4-zeroshot":
-        prompt = prompt_v4_cot_news_zeroshot.base_prompt
+        prompt = prompt_v4.prompt_zeroshot
 
     logging.info(f"[프롬프트 전문] {prompt}")
     return prompt
