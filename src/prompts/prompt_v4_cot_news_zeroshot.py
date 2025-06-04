@@ -26,6 +26,11 @@ output = """
 **주의: 판단이 불확실하거나 기준 위반이 명확하지 않은 경우, '그린워싱 없음'으로 판단하며 그 이유를 근거에 설명하세요.**
 """
 
+example = """
+[예시]
+{example}
+"""
+
 goal = """
 [기사 본문]
 {query}
@@ -43,9 +48,15 @@ goal = """
 [답변 시작]
 """
 
-template = role + cot + output + goal
+template_zeroshot = role + cot + output + goal
+template_oneshot = role + cot + output + example + goal
 
-base_prompt = PromptTemplate(
-    template=template,
+prompt_zeroshot = PromptTemplate(
+    template=template_zeroshot,
     input_variables=["query", "certification_type", "context"],
+)
+
+prompt_oneshot = PromptTemplate(
+    template=template_oneshot,
+    input_variables=["example", "query", "certification_type", "context"],
 )
