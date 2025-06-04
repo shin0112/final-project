@@ -64,6 +64,9 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
 
 
 def generate_answer(model, tokenizer, query, context, ct="", prompt_version="fewshot", rt_n=None):
+    MAX_TOTAL_TOKENS = 2048
+    MAX_CONTEXT_TOKENS = 800
+    MAX_EXAMPLE_TOKENS = 500
     prompt_template = load_prompt(prompt_version)
 
     if prompt_version[:2] == "v4":
@@ -73,9 +76,9 @@ def generate_answer(model, tokenizer, query, context, ct="", prompt_version="few
             logging.info(f"[뉴스 예시 문서] {example_docs[0].page_content[:200]}...")
             # 예시, 가이드라인 문서 블록 만들고 토큰 단위로 자르기
             example_block = query_processor.build_example_block(
-                example_docs, tokenizer, max_tokens=500)
+                example_docs, tokenizer, max_tokens=MAX_EXAMPLE_TOKENS)
         context_block = query_processor.truncate_context(
-            context, tokenizer, max_tokens=1000)
+            context, tokenizer, max_tokens=MAX_CONTEXT_TOKENS)
 
         if prompt_version == "v4-oneshot":
             prompt = prompt_template.format(
@@ -94,15 +97,20 @@ def generate_answer(model, tokenizer, query, context, ct="", prompt_version="few
     else:
         prompt = prompt_template.format(query=query, context=context)
     # logging.info(f"[프롬프트] 설정 확인: {prompt[:800]}")
-
     logging.info(f"[프롬프트 전문] {prompt}")
+    tokens = tokenizer.tokenize(prompt)
+    if len(tokens) > MAX_TOTAL_TOKENS:
+        logging.warning(
+            f"Prompt is too long: {len(tokens)} tokens. Truncating to {MAX_TOTAL_TOKENS}.")
+        tokens = tokens[:MAX_TOTAL_TOKENS]
+        prompt = tokenizer.convert_tokens_to_string(tokens)
 
     inputs = tokenizer(
         prompt,
         return_tensors="pt",
         padding=True,  # 단문 자동 패딩 → 길이 맞추기
         truncation=True,  # 장문 자동 잘라내기
-        max_length=tokenizer.model_max_length,  # 최대 길이 설정
+        max_length=MAX_TOTAL_TOKENS,  # 최대 길이 설정
     ).to(model.device)
 
     input_ids = inputs['input_ids']
@@ -539,7 +547,8 @@ if __name__ == "__main__":
 
     # rerank_llama3Ko(prompt_version="oneshot")
     logging.info("""
-                [실험 간단 설명] rerank로 예시 test_compressed.csv 파일 30개 랜덤 sample해서 실행시킴. 그린워싱 아님 데이터 비중 높여서 문서 재압축. v4-zeroshot 프롬프트 사용. 문서 유사도 필터링 함. 잘 검색되고 있는지 로그 추가
+                [실험 간단 설명] rerank v4-zeroshot 그린워싱없음 sample만 
+                 프롬프트 변경 1538
                 """)
     rerank_llama3Ko(prompt_version="v4-zeroshot")
 
