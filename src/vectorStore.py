@@ -332,7 +332,7 @@ class KoreanReranker:
         filtered_retriever = base_retriever.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs={
-                "score_threshold": 0.75,
+                "score_threshold": 0.85,
                 "k": 5
             }
         )
@@ -346,7 +346,7 @@ class KoreanReranker:
         logging.info("KoreanReranker 모델 로드 완료!")
 
 
-def search_with_score_filter(retriever, query, min_score=0.75, k=5):
+def search_with_score_filter(retriever, query, min_score=0.85, k=5):
     results = retriever.vectorstore.similarity_search_with_score(
         query, k=k)
     filtered = []
