@@ -109,7 +109,7 @@ def generate_answer_groq(
     generation_time = time.time() - start_gen
     logging.info(f"응답 생성 시간: {generation_time:.2f}초")
 
-    return output_text.strip(), generation_time
+    return output_text.content.strip(), generation_time
 
 
 def run_rag_pipeline(prompt_version="v4-zeroshot"):
