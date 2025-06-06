@@ -194,6 +194,7 @@ def run_model(model,
 
     for idx, row in test_input.iterrows():
         raw_article = row['compressed_article']
+        ct = row['ct']
 
         if not isinstance(raw_article, str):
             logging.warning(
@@ -204,9 +205,19 @@ def run_model(model,
 
         logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
         logging.info(f"[처리 기사 내용] {article}")
+
         logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
+        start_retrieval = time.time()
+
         guideline = vectorStore.search_with_score_filter(
-            rt_g, article, min_score=0.75)
+            retriever=rt_g,
+            query=article,
+            min_score=0.75
+        )
+
+        retriever_time = time.time() - start_retrieval
+        logging.info(f"[문서 검색 완료] 소요 시간: {retriever_time:.2f}초")
+
         context = "\n".join([doc.page_content for doc in guideline])[:1000]
 
         logging.info(f"[1차 검색된 가이드라인 문서]")
@@ -231,11 +242,12 @@ def run_model(model,
                 rt_n, article, min_score=0.75)
             context = "\n".join([doc.page_content for doc in news])[:1000]
 
-        answer, _ = generate_answer(
+        answer, generate_time = generate_answer(
             model=model,
             tokenizer=tokenizer,
             query=article,
             context=context,
+            ct=ct,
             prompt_version=prompt_version
         )
         logging.info(f"[답변 생성] {answer}")
@@ -244,15 +256,15 @@ def run_model(model,
         results.append({
             "article": article,
             "context": context,
-            "answer": answer
+            "answer": answer,
+            "retriever_time": round(retriever_time, 3),
+            "generate_time": round(generate_time, 3),
+            "reason_summary": row['reason_summary'],
         })
 
     logging_result(results)
-    save_and_evaluate_results(results,
-                              test_input_df=test_input,
-                              filename=f"llama3Ko_{version}_{prompt_version}"
-                              )
-    return test_input
+
+    return results
 
 
 def llama3Ko(version="double", prompt_version="fewshot", news_mix=False):
@@ -264,11 +276,11 @@ def llama3Ko(version="double", prompt_version="fewshot", news_mix=False):
         model_name="llama3Ko",
         embeddings_model=embeddings_model,
         embeddings_model_name="KoSimCSE",
-        search_strategy="double",
+        search_strategy=version,
         news_mix=news_mix,
     )
 
-    test_input = run_model(
+    results = run_model(
         model=model,
         tokenizer=tokenizer,
         rt_g=rt_g,
@@ -283,10 +295,15 @@ def llama3Ko(version="double", prompt_version="fewshot", news_mix=False):
         model_name="llama3Ko",
         embeddings_model="KoSimCSE",
         retriever_strategy=version,
-        num_articles=len(test_input),
+        num_articles=len(results),
         prompt_version=prompt_version
     )
 
+    save_and_evaluate_results(
+        results=results,
+        test_input_df=results,
+        filename=f"llama3Ko_{version}_{prompt_version}"
+    )
     logging.info(
         f"llama3Ko + {version} retriever + {prompt_version} 사용한 그린워싱 판별 종료")
 
@@ -402,13 +419,13 @@ def rerank_llama3Ko(prompt_version="v4-zeroshot"):
         logging.info(f"[검색된 문서]")
         for i, doc in enumerate(all_docs, 1):
             logging.info(f"  [{i}] {doc.page_content}...")
-        news_store = vectorStore.load_or_create_faiss_news(embeddings_model)
 
         rt_n = None
         if prompt_version == "v4-oneshot":
             # 유사도 검색으로 뉴스 문서 가져오기
             logging.info(f"[뉴스 데이터 검색]")
-            # 유사도 검색으로 뉴스 문서 가져오기
+            news_store = vectorStore.load_or_create_faiss_news(
+                embeddings_model)
             rt_n = news_store.as_retriever(
                 search_type="similarity",
                 search_kwargs={"k": 2}
