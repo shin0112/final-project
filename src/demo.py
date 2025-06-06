@@ -26,6 +26,21 @@ logging.basicConfig(
     ]
 )
 
+# 명시적 logger 인스턴스 사용
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+
+file_handler = logging.FileHandler(log_file, encoding='utf-8')
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
+
 test_input_path = Path(__file__).parent.parent / 'data' / \
     'greenwashing' / 'test_data.csv'
 test_input_c_path = Path(__file__).parent.parent / 'data' / \
@@ -42,12 +57,12 @@ def logging_result(results):
 
 
 def logging_model(model_name, embeddings_model, retriever_strategy, num_articles, prompt_version):
-    logging.info(f"[실험 환경]")
-    logging.info(f"  모델: {model_name}")
-    logging.info(f"  쿼리 임베딩 모델: {embeddings_model}")
-    logging.info(f"  검색 전략: {retriever_strategy}")
-    logging.info(f"  검색 문서 수: {num_articles}")
-    logging.info(f"  프롬프트 버전: {prompt_version}")
+    logger.info(f"[실험 환경]")
+    logger.info(f"  모델: {model_name}")
+    logger.info(f"  쿼리 임베딩 모델: {embeddings_model}")
+    logger.info(f"  검색 전략: {retriever_strategy}")
+    logger.info(f"  검색 문서 수: {num_articles}")
+    logger.info(f"  프롬프트 버전: {prompt_version}")
 
 
 def groq_loader():
@@ -59,7 +74,7 @@ def groq_loader():
         max_tokens=4096,
         api_key=load_token.groq_token
     )
-    logging.info(f"모델 {model_name} 로드 완료")
+    logger.info(f"모델 {model_name} 로드 완료")
     return model
 
 
@@ -103,17 +118,17 @@ def generate_answer_groq(
             certification_type=ct
         )
 
-    logging.info(f"프롬프트 구성 완료 (길이: {len(prompt)}자)")
+    logger.info(f"프롬프트 구성 완료 (길이: {len(prompt)}자)")
     start_gen = time.time()
     output_text = model.invoke(prompt)  # ChatGroq 기반
     generation_time = time.time() - start_gen
-    logging.info(f"응답 생성 시간: {generation_time:.2f}초")
+    logger.info(f"응답 생성 시간: {generation_time:.2f}초")
 
     return output_text.content.strip(), generation_time
 
 
 def run_rag_pipeline(prompt_version="v4-zeroshot"):
-    logging.info("[START] groq 기반 RAG 파이프라인 실행")
+    logger.info("[START] groq 기반 RAG 파이프라인 실행")
 
     model = groq_loader()
     embeddings_model = vectorStore.KoSimCSE()
@@ -129,11 +144,11 @@ def run_rag_pipeline(prompt_version="v4-zeroshot"):
         ct = row.get("ct", "없음")
 
         if not article:
-            logging.warning(f"[{idx}] 빈 기사 내용 → 건너뜀")
+            logger.warning(f"[{idx}] 빈 기사 내용 → 건너뜀")
             continue
 
-        logging.info(f"[{idx + 1}/{len(test_input)}] 기사 처리 시작")
-        logging.info(f"기사 내용: {article}")
+        logger.info(f"[{idx + 1}/{len(test_input)}] 기사 처리 시작")
+        logger.info(f"기사 내용: {article}")
 
         start_retrieve = time.time()
         docs = vectorStore.search_with_score_filter(
@@ -146,11 +161,11 @@ def run_rag_pipeline(prompt_version="v4-zeroshot"):
 
         context_list = [doc.page_content for doc in docs]
         for i, doc in enumerate(docs, 1):
-            logging.info(f"  문서{i}: {doc.page_content[:80]}...")
+            logger.info(f"  문서{i}: {doc.page_content[:80]}...")
 
         news_retriever = None
         if prompt_version == "v4-oneshot":
-            logging.info("뉴스 DB에서 예시 검색기 로드")
+            logger.info("뉴스 DB에서 예시 검색기 로드")
             news_store = vectorStore.load_or_create_faiss_news(
                 embeddings_model)
             news_retriever = news_store.as_retriever(
@@ -165,8 +180,8 @@ def run_rag_pipeline(prompt_version="v4-zeroshot"):
             rt_n=news_retriever
         )
 
-        logging.info(f"[답변 생성 완료] {gen_time:.2f}초 소요")
-        logging.info(f"[답변 요약]: {answer}...")
+        logger.info(f"[답변 생성 완료] {gen_time:.2f}초 소요")
+        logger.info(f"[답변 요약]: {answer}...")
 
         results.append({
             "article": article,
@@ -191,11 +206,11 @@ def run_rag_pipeline(prompt_version="v4-zeroshot"):
         test_input_df=test_input,
         filename=f"groq_rerank_{prompt_version}"
     )
-    logging.info("[END] 전체 처리 완료")
+    logger.info("[END] 전체 처리 완료")
 
 
 def run_single_text(article: str, ct: str = "없음", prompt_version="v4-zeroshot"):
-    logging.info("[START] 단일 기사 처리 시작")
+    logger.info("[START] 단일 기사 처리 시작")
 
     model = groq_loader()
     embeddings_model = vectorStore.KoSimCSE()
@@ -205,10 +220,10 @@ def run_single_text(article: str, ct: str = "없음", prompt_version="v4-zerosho
 
     article = article.strip()
     if not article:
-        logging.warning("빈 기사 내용 입력됨 → 종료")
+        logger.warning("빈 기사 내용 입력됨 → 종료")
         return ""
 
-    logging.info(f"기사 내용: {article}")
+    logger.info(f"기사 내용: {article}")
 
     start_retrieve = time.time()
     docs = vectorStore.search_with_score_filter(
@@ -221,11 +236,11 @@ def run_single_text(article: str, ct: str = "없음", prompt_version="v4-zerosho
 
     context_list = [doc.page_content for doc in docs]
     for i, doc in enumerate(docs, 1):
-        logging.info(f"  문서{i}: {doc.page_content[:80]}...")
+        logger.info(f"  문서{i}: {doc.page_content[:80]}...")
 
     news_retriever = None
     if prompt_version == "v4-oneshot":
-        logging.info("뉴스 DB에서 예시 검색기 로드")
+        logger.info("뉴스 DB에서 예시 검색기 로드")
         news_store = vectorStore.load_or_create_faiss_news(embeddings_model)
         news_retriever = news_store.as_retriever(
             search_type="similarity", search_kwargs={"k": 2})
@@ -239,8 +254,8 @@ def run_single_text(article: str, ct: str = "없음", prompt_version="v4-zerosho
         rt_n=news_retriever
     )
 
-    logging.info(f"[단일 응답 완료] {gen_time:.2f}초 소요")
-    logging.info(f"[응답 내용]: {answer}")
+    logger.info(f"[단일 응답 완료] {gen_time:.2f}초 소요")
+    logger.info(f"[응답 내용]: {answer}")
 
     return answer
 
@@ -248,10 +263,10 @@ def run_single_text(article: str, ct: str = "없음", prompt_version="v4-zerosho
 def load_data(rows=None, legalize: bool = True):
     # 파일 경로 확인
     if not os.path.exists(test_input_c_path):
-        logging.info(f"입력 파일 '{test_input_path}'을(를) 불러옵니다.")
+        logger.info(f"입력 파일 '{test_input_path}'을(를) 불러옵니다.")
         try:
             df = pd.read_csv(test_input_path)
-            logging.info(f"CSV 파일 로드 성공: {df.shape[0]}개의 행, {df.shape[1]}개의 열")
+            logger.info(f"CSV 파일 로드 성공: {df.shape[0]}개의 행, {df.shape[1]}개의 열")
             model = groq_loader()
 
             df['compressed_article'] = compress_article(
@@ -260,7 +275,7 @@ def load_data(rows=None, legalize: bool = True):
             df.to_csv(test_input_c_path, index=False)
 
         except Exception as e:
-            logging.exception("CSV 파일을 불러오는 중 오류 발생")
+            logger.exception("CSV 파일을 불러오는 중 오류 발생")
             raise
 
     # data 뽑기
@@ -278,14 +293,14 @@ def load_data(rows=None, legalize: bool = True):
     else:
         test_input = selected_negatives.reset_index(drop=True)
 
-    logging.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")
+    logger.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")
 
     test_input = query_processor.preprocess_articles(test_input, legalize)
     if not test_input.empty:
-        logging.info(
+        logger.info(
             f"[확인] {test_input['compressed_article'].iloc[0][:1000]} {test_input['ct'].iloc[0]}")
     else:
-        logging.warning("⚠ 처리된 문서가 없습니다!")
+        logger.warning("⚠ 처리된 문서가 없습니다!")
 
     return test_input
 
@@ -294,16 +309,16 @@ def compress_article(news_list, model=None):
     # 모델 로드하기 (llama3ko)
     try:
         if model is None:
-            logging.info("기사 압축에 사용할 LLM 모델을 로드합니다.")
+            logger.info("기사 압축에 사용할 LLM 모델을 로드합니다.")
             model = groq_loader()
-            logging.info("모델 로드 완료")
+            logger.info("모델 로드 완료")
     except Exception as e:
-        logging.exception("모델 로드 중 오류 발생")
+        logger.exception("모델 로드 중 오류 발생")
         raise
 
     # 프롬프트 불러오기 (기사 압축 프롬프트)
     prompt_template = prompt_compression.base_prompt
-    logging.info("프롬프트 로드 완료")
+    logger.info("프롬프트 로드 완료")
     compressed_results = []
 
     for news in news_list:
@@ -316,12 +331,12 @@ def compress_article(news_list, model=None):
             continue
 
         try:
-            logging.info("기사 압축 시작")
+            logger.info("기사 압축 시작")
             prompt = prompt_template.format(news=news)
             compressed = model.invoke(prompt)
             compressed_results.append(extract_summary_only(compressed))
         except Exception as e:
-            logging.warning(f"기사 압축 실패: {e}")
+            logger.warning(f"기사 압축 실패: {e}")
             compressed_results.append("압축 실패")
 
     return compressed_results
@@ -353,4 +368,4 @@ def normalize_cert_type(text):
 
 
 if __name__ == "__main__":
-    run_rag_pipeline(prompt_version="v4-oneshot")
+    run_rag_pipeline(prompt_version="v4-zeroshot")
