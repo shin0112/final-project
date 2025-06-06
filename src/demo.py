@@ -166,7 +166,7 @@ def run_rag_pipeline(prompt_version="v4-zeroshot"):
         )
 
         logging.info(f"[답변 생성 완료] {gen_time:.2f}초 소요")
-        logging.info(f"[답변 요약]: {answer[:150]}...")
+        logging.info(f"[답변 요약]: {answer}...")
 
         results.append({
             "article": article,
@@ -176,6 +176,7 @@ def run_rag_pipeline(prompt_version="v4-zeroshot"):
             "generate_time": round(gen_time, 3),
             "reason_summary": row.get("reason_summary", "")
         })
+        time.sleep(30)
 
     logging_result(results)
     logging_model(
