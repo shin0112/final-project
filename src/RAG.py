@@ -363,7 +363,7 @@ def double_llama3Ko_not_legalize():
     logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 종료 + 법률 용어화 안함")
 
 
-def rerank_llama3Ko(prompt_version="fewshot"):
+def rerank_llama3Ko(prompt_version="v4-zeroshot"):
     logging.info("llama3Ko 모델과 rerank retriever을 사용한 그린워싱 판별 시작")
 
     # 모델 불러오기
@@ -405,7 +405,8 @@ def rerank_llama3Ko(prompt_version="fewshot"):
         news_store = vectorStore.load_or_create_faiss_news(embeddings_model)
 
         rt_n = None
-        if prompt_version == "v4":
+        if prompt_version == "v4-oneshot":
+            # 유사도 검색으로 뉴스 문서 가져오기
             logging.info(f"[뉴스 데이터 검색]")
             # 유사도 검색으로 뉴스 문서 가져오기
             rt_n = news_store.as_retriever(
