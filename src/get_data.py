@@ -1,3 +1,4 @@
+import os
 import logging
 import pandas as pd
 from pathlib import Path
@@ -9,6 +10,8 @@ test_input_path = Path(__file__).parent.parent / 'data' / \
     'greenwashing' / 'test_data.csv'
 test_input_c_path = Path(__file__).parent.parent / 'data' / \
     'greenwashing' / 'test_data_compressed.csv'
+final_test_path = Path(__file__).parent.parent / 'data' / \
+    'greenwashing' / 'final_test_data.csv'
 
 
 def load_test_data(rows: int = None) -> pd.DataFrame:
@@ -21,34 +24,27 @@ def load_test_data(rows: int = None) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame containing the test data.
     """
-    process_data.compress_article(test_input_path, test_input_c_path)
+    if not os.path.exists(final_test_path):
+        process_data.compress_article(test_input_path, test_input_c_path)
+        df = pd.read_csv(test_input_c_path, encoding='utf-8')
 
-    df = pd.read_csv(test_input_c_path, encoding='utf-8')
+        df_0 = df[df['greenwashing_level'] ==
+                  0.0].sample(n=12, random_state=42)
+        df_1 = df[df['greenwashing_level'] ==
+                  1.0].sample(n=12, random_state=42)
+        df_05 = df[df['greenwashing_level'] ==
+                   0.5].sample(n=6, random_state=42)
+
+        final_df = pd.concat([df_0, df_1, df_05]).reset_index(drop=True)
+        final_df.to_csv(final_test_path, index=False)
+
+    df = pd.read_csv(final_test_path, encoding='utf-8')
+    logging.info(f"[테스트 데이터 로드] {len(df)}개 문장 로드")
     return df.head(rows) if rows else df
 
 
 def load_data(legalize: bool = True):
     test_input = load_test_data()
-
-    # 무작위 샘플 40개 뽑기
-    # test_input = test_input.sample(n=40).reset_index(drop=True)
-
-    # 그린워싱 없음 비중 향상
-    negative_samples = test_input[test_input["greenwashing_level"] == 0]
-    selected_negatives = negative_samples.sample(
-        n=min(30, len(negative_samples)), random_state=42)
-
-    remaining = 30 - len(selected_negatives)
-    if remaining > 0:
-        remaining_samples = test_input.drop(
-            selected_negatives.index).sample(n=remaining, random_state=42)
-        test_input = pd.concat(
-            [selected_negatives, remaining_samples], ignore_index=True)
-    else:
-        test_input = selected_negatives.reset_index(drop=True)
-
-    logging.info(f"[테스트 데이터 로드] {len(test_input)}개 문장 로드")
-
     test_input = query_processor.preprocess_articles(test_input, legalize)
 
     if not test_input.empty:
