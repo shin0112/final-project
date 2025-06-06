@@ -31,7 +31,7 @@ GUIDELINE_NEWS_FAISS_PATH = FAISS_PATH / "guideline_news"
 class KoSimCSE:
     def __init__(self, model_name='BM-K/KoSimCSE-roberta', device=None):
         logging.info("KoSimCSE 임베딩 모델 로드 중입니다...")
-        self.device = "cuda"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name).to(self.device)
         self.model.eval()
