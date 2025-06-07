@@ -23,8 +23,7 @@ class ArticleRequest(BaseModel):
 @app.post("/run")
 def run_pipeline(req: ArticleRequest):
     result = run_single_text(req.article, req.ct)
-    translated = postprocess_answer(result)
-    parsed = parse_answer(translated)
+    parsed = parse_answer(result)
 
     return {
         "raw": result,
@@ -81,10 +80,10 @@ def parse_answer(text: str) -> dict:
     result = {"judgement": "", "reason": "", "law": "", "solution": ""}
 
     patterns = {
-        "judgement": r"\*\*판단:?\s*(.*?)\*\*",
-        "reason": r"\*\*근거:?\*\*\s*(.*?)(?=\*\*법률:|\Z)",
-        "law": r"\*\*법률:?\*\*\s*(.*?)(?=\*\*해결방안:|\Z)",
-        "solution": r"\*\*해결방안:?\*\*\s*(.*)",
+        "judgement": r"\*\*(판단|Judgment):?\*\*\s*(.*?)\n",
+        "reason": r"\*\*(근거|Reasoning):?\*\*\s*(.*?)(?=\*\*(법률|Law|Justification|Regulation):|\Z)",
+        "law": r"\*\*(법률|Law|Regulation):?\*\*\s*(.*?)(?=\*\*(해결방안|Remedy):|\Z)",
+        "solution": r"\*\*(해결방안|Remedy):?\*\*\s*(.*)"
     }
 
     for key, pattern in patterns.items():
