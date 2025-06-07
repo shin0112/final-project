@@ -200,13 +200,15 @@ def build_example_block(example_docs, tokenizer, max_tokens=500):
     return block.strip()
 
 
-def truncate_context(text_blocks: list[str], tokenizer, max_tokens=1000):
-    context = ""
-    used_tokens = 0
-    for text in text_blocks:
-        tokens = num_tokens(text, tokenizer)
-        if used_tokens + tokens > max_tokens:
-            break
-        context += text + "\n"
-        used_tokens += tokens
-    return context.strip()
+def truncate_context(text_blocks: str, tokenizer, max_tokens=1000):
+    if isinstance(text_blocks, list):
+        text = "\n".join(text_blocks)
+    else:
+        text = text_blocks
+
+    tokens = tokenizer.tokenize(text)
+    if len(tokens) <= max_tokens:
+        return text.strip()
+
+    truncated_tokens = tokens[:max_tokens]
+    return tokenizer.convert_tokens_to_string(truncated_tokens).strip()
