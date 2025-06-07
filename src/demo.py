@@ -47,6 +47,26 @@ test_input_c_path = Path(__file__).parent.parent / 'data' / \
     'greenwashing' / 'test_data_compressed.csv'
 
 
+def groq_loader():
+    # demo용 open ai 호출
+    model_name = "llama3-8b-8192"
+    model = ChatGroq(
+        model=model_name,
+        temperature=0.8,
+        max_tokens=4096,
+        api_key=load_token.groq_token
+    )
+    logger.info(f"모델 {model_name} 로드 완료")
+    return model
+
+
+model = groq_loader()
+embeddings_model = vectorStore.KoSimCSE()
+base_retriever = vectorStore.load_or_create_faiss_rerank(embeddings_model)
+reranker = vectorStore.KoreanReranker(base_retriever)
+retriever = reranker.compression_retriever
+
+
 def logging_result(results):
     for r in results:
         print("="*80)
@@ -63,19 +83,6 @@ def logging_model(model_name, embeddings_model, retriever_strategy, num_articles
     logger.info(f"  검색 전략: {retriever_strategy}")
     logger.info(f"  검색 문서 수: {num_articles}")
     logger.info(f"  프롬프트 버전: {prompt_version}")
-
-
-def groq_loader():
-    # demo용 open ai 호출
-    model_name = "llama3-8b-8192"
-    model = ChatGroq(
-        model=model_name,
-        temperature=0.8,
-        max_tokens=4096,
-        api_key=load_token.groq_token
-    )
-    logger.info(f"모델 {model_name} 로드 완료")
-    return model
 
 
 def build_example_block(docs, max_tokens=500):
@@ -129,12 +136,6 @@ def generate_answer_groq(
 
 def run_rag_pipeline(prompt_version="v4-zeroshot"):
     logger.info("[START] groq 기반 RAG 파이프라인 실행")
-
-    model = groq_loader()
-    embeddings_model = vectorStore.KoSimCSE()
-    base_retriever = vectorStore.load_or_create_faiss_rerank(embeddings_model)
-    reranker = vectorStore.KoreanReranker(base_retriever)
-    retriever = reranker.compression_retriever
 
     test_input = load_data()
     results = []
@@ -211,13 +212,6 @@ def run_rag_pipeline(prompt_version="v4-zeroshot"):
 
 def run_single_text(article: str, ct: str = "없음", prompt_version="v4-zeroshot"):
     logger.info("[START] 단일 기사 처리 시작")
-
-    model = groq_loader()
-    embeddings_model = vectorStore.KoSimCSE()
-    base_retriever = vectorStore.load_or_create_faiss_rerank(embeddings_model)
-    reranker = vectorStore.KoreanReranker(base_retriever)
-    retriever = reranker.compression_retriever
-
     article = article.strip()
     if not article:
         logger.warning("빈 기사 내용 입력됨 → 종료")
@@ -365,7 +359,3 @@ def normalize_cert_type(text):
         return "없음"
     else:
         return "기타"
-
-
-if __name__ == "__main__":
-    run_rag_pipeline(prompt_version="v4-zeroshot")
