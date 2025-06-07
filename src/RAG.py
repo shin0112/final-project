@@ -264,7 +264,7 @@ def run_model(model,
 
     logging_result(results)
 
-    return results
+    return test_input, results
 
 
 def llama3Ko(version="double", prompt_version="fewshot", news_mix=False):
@@ -280,7 +280,7 @@ def llama3Ko(version="double", prompt_version="fewshot", news_mix=False):
         news_mix=news_mix,
     )
 
-    results = run_model(
+    test_input, results = run_model(
         model=model,
         tokenizer=tokenizer,
         rt_g=rt_g,
@@ -301,7 +301,7 @@ def llama3Ko(version="double", prompt_version="fewshot", news_mix=False):
 
     save_and_evaluate_results(
         results=results,
-        test_input_df=results,
+        test_input_df=test_input,
         filename=f"llama3Ko_{version}_{prompt_version}"
     )
     logging.info(
@@ -557,18 +557,18 @@ def llama3Ko_article_level(prompt_version="fewshot"):
 
 
 if __name__ == "__main__":
+    logging.info("""
+                [실험 간단 설명] rerank v4-zeroshot 테스트 데이터 확정
+                """)
+
     # llama3Ko(version="double", prompt_version="fewshot")
     # llama3Ko(version="double", prompt_version="base")
     # llama3Ko(version="single", prompt_version="fewshot")
-    # llama3Ko(version="single", prompt_version="base")
+    # llama3Ko(version="single", prompt_version="v4-zeroshot")
     # double_llama3Ko_not_legalize()
 
-    # rerank_llama3Ko(prompt_version="oneshot")
-    logging.info("""
-                [실험 간단 설명] rerank v4-zeroshot 그린워싱없음 sample만 
-                 프롬프트 변경 1538
-                """)
     rerank_llama3Ko(prompt_version="v4-zeroshot")
+    # rerank_llama3Ko(prompt_version="v4-oneshot")
 
     # llama3Ko_article_level(prompt_version="oneshot")
     # llama3Ko_article_level(prompt_version="base")
