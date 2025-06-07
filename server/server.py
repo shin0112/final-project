@@ -1,11 +1,17 @@
 import re
+import requests
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from typing import Optional
 
-from demo import run_single_text
+from src.demo import run_single_text
 
 app = FastAPI()
+
+client_id = os.environ.get("PAPAGO_CLIENT_ID")
+client_secret = os.environ.get("PAPAGO_CLIENT_SECRET")
 
 
 class ArticleRequest(BaseModel):
@@ -24,6 +30,32 @@ def run_pipeline(req: ArticleRequest):
         "raw": result,
         "data": parsed
     }
+
+
+def postprocess_answer(text: str) -> str:
+    if is_english(text):
+        return translate_to_korean(text)
+    return text
+
+
+def is_english(text: str) -> bool:
+    english_ratio = len(re.findall(r'[a-zA-Z]', text)) / max(1, len(text))
+    return english_ratio > 0.4
+
+
+def translate_to_korean(text: str) -> str:
+    url = "https://papago.apigw.ntruss.com/nmt/v1/translation"
+    headers = {
+        "X-Naver-Client-Id": client_id,
+        "X-Naver-Client-Secret": client_secret
+    }
+    data = {
+        "source": "en",
+        "target": "ko",
+        "text": text
+    }
+    response = requests.post(url, headers=headers, data=data)
+    return response.json()['message']['result']['translatedText']
 
 
 def parse_answer(text: str) -> dict:
