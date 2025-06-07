@@ -32,6 +32,15 @@ def run_pipeline(req: ArticleRequest):
     }
 
 
+@app.post("/translate")
+def translate_only(req: ArticleRequest):
+    translated = postprocess_answer(req.article)
+    return {
+        "original": req.article,
+        "translated": translated
+    }
+
+
 def postprocess_answer(text: str) -> str:
     if is_english(text):
         return translate_to_korean(text)
@@ -47,16 +56,22 @@ def translate_to_korean(text: str) -> str:
     url = "https://papago.apigw.ntruss.com/nmt/v1/translation"
     headers = {
         "X-Naver-Client-Id": client_id,
-        "X-Naver-Client-Secret": client_secret
+        "X-Naver-Client-Secret": client_secret,
+        "Content-Type": "application/json"
     }
     data = {
         "source": "en",
         "target": "ko",
         "text": text
     }
-    response = requests.post(url, headers=headers, data=data)
-    print("번역" + response)
-    return response.json()['message']['result']['translatedText']
+    response = requests.post(url, headers=headers, json=data)
+    try:
+        result = response.json()['message']['result']['translatedText']
+        print("[번역 결과]", result)
+        return result
+    except KeyError:
+        print("[번역 실패 응답]", response.text)
+        raise ValueError("Papago 번역 실패: 응답 구조 확인 필요")
 
 
 def parse_answer(text: str) -> dict:
