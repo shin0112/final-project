@@ -6,10 +6,11 @@ from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from typing import Optional
 
-from src.demo import run_single_text
+from demo import run_single_text
 
 app = FastAPI()
 
+load_dotenv()
 client_id = os.environ.get("PAPAGO_CLIENT_ID")
 client_secret = os.environ.get("PAPAGO_CLIENT_SECRET")
 
@@ -21,10 +22,9 @@ class ArticleRequest(BaseModel):
 
 @app.post("/run")
 def run_pipeline(req: ArticleRequest):
-    prompt_version = "v4-zeroshot"
-
     result = run_single_text(req.article, req.ct)
-    parsed = parse_answer(result)
+    translated = postprocess_answer(result)
+    parsed = parse_answer(translated)
 
     return {
         "raw": result,
@@ -55,6 +55,7 @@ def translate_to_korean(text: str) -> str:
         "text": text
     }
     response = requests.post(url, headers=headers, data=data)
+    print("번역" + response)
     return response.json()['message']['result']['translatedText']
 
 
