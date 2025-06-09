@@ -36,7 +36,7 @@ def load_prompt(version="fewshot"):
         prompt = prompt_v3_cot_fewshot.fewShot_prompt
     elif version == "oneshot":
         prompt = prompt_v3_cot_fewshot.one_shot_example_template
-    elif version == "v4-oneshot":
+    elif version[:10] == "v4-oneshot":
         prompt = prompt_v4.prompt_oneshot
     elif version == "v4-zeroshot":
         prompt = prompt_v4.prompt_zeroshot
@@ -71,7 +71,7 @@ def generate_answer(model, tokenizer, query, context, ct="", prompt_version="few
 
     if prompt_version[:2] == "v4":
         # 예시 문서 가져오기 - 문서 1개
-        if prompt_version == "v4-oneshot":
+        if prompt_version[:10] == "v4-oneshot":
             example_docs = rt_n.vectorstore.similarity_search(query, k=1)
             logging.info(f"[뉴스 예시 문서] {example_docs[0].page_content[:200]}...")
             # 예시, 가이드라인 문서 블록 만들고 토큰 단위로 자르기
@@ -80,7 +80,7 @@ def generate_answer(model, tokenizer, query, context, ct="", prompt_version="few
         context_block = query_processor.truncate_context(
             context, tokenizer, max_tokens=MAX_CONTEXT_TOKENS)
 
-        if prompt_version == "v4-oneshot":
+        if prompt_version[:10] == "v4-oneshot":
             prompt = prompt_template.format(
                 query=query,
                 context=context_block,
@@ -154,13 +154,18 @@ def run_experiment(model_name,
             embeddings_model)
         rt_n = None
     else:
-        guideline_store = vectorStore.load_or_create_faiss_guideline(
-            embeddings_model)
-        news_store = vectorStore.load_or_create_faiss_news(embeddings_model)
-        rt_n = news_store.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": 2}
-        )
+        if search_strategy == "double":
+            guideline_store = vectorStore.load_or_create_faiss_guideline(
+                embeddings_model)
+            news_store = vectorStore.load_or_create_faiss_guideline_example(
+                embeddings_model)
+            rt_n = news_store.as_retriever(
+                search_type="similarity",
+                search_kwargs={"k": 2}
+            )
+        else:
+            guideline_store = base_retriever
+            rt_n = None
 
     if search_strategy == "double":
         law_store = vectorStore.load_or_create_faiss_law(embeddings_model)
@@ -308,78 +313,6 @@ def llama3Ko(version="double", prompt_version="fewshot", news_mix=False):
         f"llama3Ko + {version} retriever + {prompt_version} 사용한 그린워싱 판별 종료")
 
 
-def double_llama3Ko_not_legalize():
-    logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 시작 + 법률 용어화 안함")
-
-    # 모델 불러오기
-    model, tokenizer, rt_g, rt_l, rt_n = run_experiment(
-        model_name="llama3Ko",
-        embeddings_model=embeddings_model,
-        embeddings_model_name="KoSimCSE",
-        search_strategy="double"
-    )
-
-    results = []
-    test_input = get_data.load_data(legalize=False)
-
-    for idx, row in test_input.iterrows():
-        raw_article = row['full_text']
-
-        if not isinstance(raw_article, str):
-            logging.warning(
-                f"[{idx}] full_text가 str이 아님: {type(raw_article)} → 건너뜀")
-            continue
-
-        article = raw_article.strip()
-
-        logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
-        logging.info(f"[처리 기사 내용] {article}")
-        logging.info(f"[가이드라인 검색 + 쿼리 임베딩]")
-        guideline = rt_g.invoke(article)
-        context = "\n".join([doc.page_content for doc in guideline])[:1000]
-
-        logging.info(f"[1차 검색된 가이드라인 문서]")
-        for i, doc in enumerate(guideline, 1):
-            logging.info(f"  [{i}] {doc.page_content}...")
-
-        # todo: 만약에 guideline 내부에 비슷한 문장이 있으면, 법률 검색? 근데 유사도 검색하면 일단은 1개 이상은 있는 거 아닌가
-        if len(guideline) > 0:
-            logging.info(f"[그린워싱 가능성 존재]")
-            logging.info(f"[법률 검색 + 쿼리 임베딩]")
-            law = rt_l.invoke(article)
-            context = "\n".join([doc.page_content for doc in law])[:1000]
-
-            logging.info(f"[2차 검색된 법률 문서]")
-            for i, doc in enumerate(law, 1):
-                logging.info(f"  [{i}] {doc.page_content}...")
-
-        answer, _ = generate_answer(
-            model=model,
-            tokenizer=tokenizer,
-            query=article,
-            context=context,
-        )
-        logging.info(f"[답변 생성] {answer}")
-        logging.info(f"[답변 종료]")
-
-        results.append({
-            "article": article,
-            "context": context,
-            "answer": answer
-        })
-
-    logging_result(results)
-    logging_model(
-        model_name="llama3Ko",
-        embeddings_model="KoSimCSE",
-        retriever_strategy="double",
-        num_articles=len(test_input),
-        prompt_version="v3_cot_fewshot"
-    )
-
-    logging.info("llama3Ko 모델과 double retriever을 사용한 그린워싱 판별 종료 + 법률 용어화 안함")
-
-
 def rerank_llama3Ko(prompt_version="v4-zeroshot"):
     logging.info("llama3Ko 모델과 rerank retriever을 사용한 그린워싱 판별 시작")
 
@@ -423,8 +356,16 @@ def rerank_llama3Ko(prompt_version="v4-zeroshot"):
         rt_n = None
         if prompt_version == "v4-oneshot":
             # 유사도 검색으로 뉴스 문서 가져오기
-            logging.info(f"[뉴스 데이터 검색]")
-            news_store = vectorStore.load_or_create_faiss_news(
+            logging.info(f"[가이드라인 뉴스 데이터 검색]")
+            news_store = vectorStore.load_or_create_faiss_guideline_example(
+                embeddings_model)
+            rt_n = news_store.as_retriever(
+                search_type="similarity",
+                search_kwargs={"k": 2}
+            )
+        elif prompt_version == "v4-oneshot-test":
+            logging.info(f"[수집 뉴스 데이터 검색]")
+            news_store = vectorStore.load_or_create_faiss_news_example(
                 embeddings_model)
             rt_n = news_store.as_retriever(
                 search_type="similarity",
@@ -491,83 +432,18 @@ def summarize_answers(answers):
     return reason_summary, law_summary, suggestion_summary
 
 
-def llama3Ko_article_level(prompt_version="fewshot"):
-    model, tokenizer = model_loader.load_model("llama3Ko")
-    tokenizer.pad_token = tokenizer.eos_token
-    retriever = reranker.compression_retriever
-
-    test_input = get_data.load_data()
-    final_results = []
-
-    for idx, row in test_input.iterrows():
-        raw_article = row['full_text']
-        if not isinstance(raw_article, str):
-            continue
-
-        logging.info(f"[기사 처리 시작] {idx + 1} / {len(test_input)}")
-        logging.info(
-            f"[처리 기사 내용] {raw_article[:1000]}, 길이: {len(raw_article)}자")
-        article = raw_article.strip()
-
-        if len(article) >= 1024:
-            logging.info(f"[기사 길이] {len(article)}자 → 기사 처리")
-            article = query_processor.extract_relevant_sentences(article)
-
-        chunks = split_article_by_token_limit(article, tokenizer)
-        chunk_answers = []
-
-        for c_idx, chunk in enumerate(chunks):
-            logging.info(
-                f"[{idx + 1}-{c_idx + 1}/{len(chunks)}] chunk 처리 중 (길이: {len(chunk)}자)")
-
-            context_docs = retriever.invoke(chunk)
-            context = "\n".join(
-                [doc.page_content for doc in context_docs])[:1000]
-
-            answer, _ = generate_answer(
-                model, tokenizer, chunk, context, prompt_version=prompt_version)
-            logging.info(f"[답변 생성] {answer}")
-            logging.info(f"[답변 종료]")
-
-            chunk_answers.append({
-                "chunk_idx": c_idx + 1,
-                "chunk": chunk,
-                "answer": answer
-            })
-
-        final_judgement = decide_final_judgement(chunk_answers)
-        reason, law, suggestion = summarize_answers(chunk_answers)
-        full_answer = f"1. 판단: {final_judgement}\n2. 근거: {reason}\n3. 법률: {law}\n4. 해결방안: {suggestion}"
-
-        final_results.append({
-            "article_idx": idx + 1,
-            "article": article,
-            "final_judgement": final_judgement,
-            "reason_summary": reason,
-            "law_summary": law,
-            "suggestion_summary": suggestion,
-            "answer": full_answer
-        })
-
-    save_and_evaluate_results(
-        final_results,
-        test_input_df=test_input,
-        filename=f"llama3Ko_article_level_{prompt_version}"
-    )
-
-
 if __name__ == "__main__":
     logging.info("""
-                [실험 간단 설명] rerank v4-zeroshot 테스트 데이터 확정
+                [실험 간단 설명] double 검색 v4-zeroshot 테스트 데이터 확정
                 """)
 
     # llama3Ko(version="double", prompt_version="fewshot")
     # llama3Ko(version="double", prompt_version="base")
     # llama3Ko(version="single", prompt_version="fewshot")
-    # llama3Ko(version="single", prompt_version="v4-zeroshot")
+    llama3Ko(version="double", prompt_version="v4-zeroshot")
     # double_llama3Ko_not_legalize()
 
-    rerank_llama3Ko(prompt_version="v4-zeroshot")
+    # rerank_llama3Ko(prompt_version="v4-oneshot-test")
     # rerank_llama3Ko(prompt_version="v4-oneshot")
 
     # llama3Ko_article_level(prompt_version="oneshot")
