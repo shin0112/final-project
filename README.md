@@ -25,6 +25,8 @@
 5. **응답 생성**: Llama3Ko 기반 LLM 프롬프트 처리
 6. **출력**: 판단 결과, 위배 조항, 법률, 해결 방안
 
+![System Architecture](img/architecture.png)
+
 ---
 
 ## 📚 데이터
@@ -58,3 +60,18 @@
 - Transformers, SentencePiece
 - LLM API 또는 로컬 실행 (예: Llama3Ko)
 - Seraph GPU 서버 환경 (32GB VRAM)
+
+## 📁 폴더 구조
+
+```text
+├── data/
+│   └── greenwashing/      # 기사, 라벨링 데이터
+├── greencheck-ui/         # ui 화면
+├── src/                   # 전체 파이프라인 코드
+└── README.md              # 현재 문서
+```
+
+## 📌 참고사항
+
+- 본 시스템은 연구 목적의 프로토타입으로, 실제 법적 판단으로 사용하기에는 한계가 있습니다.
+- 테스트 데이터는 수작업 라벨링을 기반으로 하며, 향후 전문가 리뷰 필요
