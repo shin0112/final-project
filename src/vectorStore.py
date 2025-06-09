@@ -22,9 +22,12 @@ LAW_FAISS_PATH = FAISS_PATH / "law"
 RERANK_FAISS_PATH = FAISS_PATH / "rerank"
 LAW_FILE_PATH = Path(__file__).parent.parent / 'config' / 'law_file_paths.json'
 NEWS_FAISS_PATH = FAISS_PATH / "news"
-NEWS_PATH = Path(__file__).parent.parent/'data' / \
+COMBINED_NEWS_FAISS_PATH = FAISS_PATH / "combined_news"
+GUIDELINE_EXAMPLE_FAISS_PATH = FAISS_PATH / "guideline_example"
+GUIDELINE_EXAMPLE_PATH = Path(__file__).parent.parent/'data' / \
     'greenwashing'/'guideline_example.csv'
-GUIDELINE_NEWS_FAISS_PATH = FAISS_PATH / "guideline_news"
+NEWS_EXAMPLE_PATH = Path(__file__).parent.parent/'data' / \
+    'greenwashing'/'vector_db_data.csv'
 # PROMPT_PATH = Path(__file__).parent / 'prompts' / 'prompt_v3_cot_fewshot.txt'
 
 
@@ -190,15 +193,15 @@ def load_or_create_faiss_rerank(embeddings_model):
     return store
 
 
-def load_or_create_faiss_news(embedding_model):
-    if NEWS_FAISS_PATH.exists():
-        logging.info("뉴스 벡터 DB 로딩 중...")
+def load_or_create_faiss_guideline_example(embedding_model):
+    if GUIDELINE_EXAMPLE_FAISS_PATH.exists():
+        logging.info("가이드라인 뉴스 벡터 DB 로딩 중...")
         store = FAISS.load_local(
-            NEWS_FAISS_PATH,
+            GUIDELINE_EXAMPLE_FAISS_PATH,
             embedding_model,
             allow_dangerous_deserialization=True
         )
-        logging.info("뉴스 벡터 DB 로드 완료!")
+        logging.info("가이드라인 뉴스 벡터 DB 로드 완료!")
         return store
 
     documents = get_example_data()
@@ -217,16 +220,65 @@ def load_or_create_faiss_news(embedding_model):
         distance_strategy=DistanceStrategy.COSINE
     )
 
+    GUIDELINE_EXAMPLE_FAISS_PATH.mkdir(parents=True, exist_ok=True)
+    store.save_local(GUIDELINE_EXAMPLE_FAISS_PATH)
+    logging.info("가이드라인 예시 기사 벡터 DB 저장 완료!")
+
+    return store
+
+
+def load_or_create_faiss_news_example(embedding_model):
+    if NEWS_FAISS_PATH.exists():
+        logging.info("뉴스 벡터 DB 로딩 중...")
+        store = FAISS.load_local(
+            NEWS_FAISS_PATH,
+            embedding_model,
+            allow_dangerous_deserialization=True
+        )
+        logging.info("뉴스 벡터 DB 로드 완료!")
+        return store
+
+    df = pd.read_csv(NEWS_EXAMPLE_PATH)
+    df.rename(columns={
+        'greenwashing_level': 'label',
+        'full_text': 'text'
+    }, inplace=True)
+
+    # 메타데이터
+    df['metadata'] = df.apply(lambda row: {
+        'label': row['label'],
+        'reason': row['reason_summary'],
+        'type': 'example'
+    }, axis=1)
+    documents = [
+        Document(page_content=row['text'], metadata=row['metadata'])
+        for _, row in df.iterrows()
+    ]
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+    )
+    docs_split = text_splitter.split_documents(documents)
+
+    logging.info(f"{len(docs_split)}개의 기사 문서를 벡터화 중입니다...")
+    store = FAISS.from_documents(
+        documents=docs_split,
+        embedding=embedding_model,
+        distance_strategy=DistanceStrategy.COSINE
+    )
+
     NEWS_FAISS_PATH.mkdir(parents=True, exist_ok=True)
     store.save_local(NEWS_FAISS_PATH)
-    logging.info("뉴스 기사 벡터 DB 저장 완료!")
+    logging.info("기사 벡터 DB 저장 완료!")
 
     return store
 
 
 def get_example_data():
     logging.info("예시용 CSV 데이터 불러오기 - guideline_example.csv")
-    df = pd.read_csv(NEWS_PATH)
+    df = pd.read_csv(GUIDELINE_EXAMPLE_PATH)
     df = df[['content', 'greenwashing_level', 'full_text',
              'solution', 'guideline_article']].copy()
 
@@ -255,10 +307,10 @@ def get_example_data():
 
 
 def load_or_create_faiss_guideline_and_news(embedding_model):
-    if GUIDELINE_NEWS_FAISS_PATH.exists():
+    if COMBINED_NEWS_FAISS_PATH.exists():
         logging.info("guideline + news 통합 벡터 DB 로드 중...")
         store = FAISS.load_local(
-            GUIDELINE_NEWS_FAISS_PATH,
+            COMBINED_NEWS_FAISS_PATH,
             embedding_model,
             allow_dangerous_deserialization=True
         )
@@ -288,8 +340,8 @@ def load_or_create_faiss_guideline_and_news(embedding_model):
         distance_strategy=DistanceStrategy.COSINE
     )
 
-    GUIDELINE_NEWS_FAISS_PATH.mkdir(parents=True, exist_ok=True)
-    store.save_local(GUIDELINE_NEWS_FAISS_PATH)
+    COMBINED_NEWS_FAISS_PATH.mkdir(parents=True, exist_ok=True)
+    store.save_local(COMBINED_NEWS_FAISS_PATH)
     logging.info("guideline + news 통합 벡터 DB 저장 완료")
 
     return store

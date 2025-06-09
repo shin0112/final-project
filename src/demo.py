@@ -167,7 +167,7 @@ def run_rag_pipeline(prompt_version="v4-zeroshot"):
         news_retriever = None
         if prompt_version == "v4-oneshot":
             logger.info("뉴스 DB에서 예시 검색기 로드")
-            news_store = vectorStore.load_or_create_faiss_news(
+            news_store = vectorStore.load_or_create_faiss_guideline_example(
                 embeddings_model)
             news_retriever = news_store.as_retriever(
                 search_type="similarity", search_kwargs={"k": 2})
@@ -235,7 +235,8 @@ def run_single_text(article: str, ct: str = "없음", prompt_version="v4-zerosho
     news_retriever = None
     if prompt_version == "v4-oneshot":
         logger.info("뉴스 DB에서 예시 검색기 로드")
-        news_store = vectorStore.load_or_create_faiss_news(embeddings_model)
+        news_store = vectorStore.load_or_create_faiss_guideline_example(
+            embeddings_model)
         news_retriever = news_store.as_retriever(
             search_type="similarity", search_kwargs={"k": 2})
 
