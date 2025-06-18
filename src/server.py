@@ -82,21 +82,22 @@ def translate_to_korean(text: str) -> str:
 
 
 def parse_answer(text: str) -> dict:
-    """
-    응답 텍스트를 판단 / 근거 / 법률 / 해결방안으로 파싱
-    """
     result = {"judgement": "", "reason": "", "law": "", "solution": ""}
 
+    # 1. 모든 '*' 기호 제거 (굵은 표시 등)
+    clean_text = text.replace("*", "")
+
+    # 2. 각 항목 패턴 정의 및 추출
     patterns = {
-        "judgement": r"\*\*(판단|Judgment):?\*\*\s*(.*?)\n",
-        "reason": r"\*\*(근거|Reasoning):?\*\*\s*(.*?)(?=\*\*(법률|Law|Justification|Regulation):|\Z)",
-        "law": r"\*\*(법률|Law|Regulation):?\*\*\s*(.*?)(?=\*\*(해결방안|Remedy):|\Z)",
-        "solution": r"\*\*(해결방안|Remedy):?\*\*\s*(.*)"
+        "judgement": r"(판단|Judgment|judgement|판斷|判斷|판정)\s*[:：]?\s*(?P<judgement>.*?)(?=\s*(근거|법률|해결방안)\s*[:：]|\Z)",
+        "reason": r"(근거|Reason)\s*[:：]?\s*(?P<reason>.*?)(?=\s*(법률|Law|Justification|Regulation)\s*[:：]|\Z)",
+        "law": r"(법률|Law|Regulation|法律|법律|法률)\s*[:：]?\s*(?P<law>.*?)(?=\s*(해결방안|Remedy)\s*[:：]|\Z)",
+        "solution": r"(해결방안|Remedy)\s*[:：]?\s*(?P<solution>.*)"
     }
 
     for key, pattern in patterns.items():
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            result[key] = match.group(1).strip()
+        match = re.search(pattern, clean_text, re.DOTALL)
+        if match and match.group(key):
+            result[key] = match.group(key).strip()
 
     return result
