@@ -155,7 +155,7 @@ def run_rag_pipeline(prompt_version="v4-zeroshot"):
         docs = vectorStore.search_with_score_filter(
             retriever=retriever.base_retriever,
             query=article,
-            min_score=0.75,
+            min_score=0.85,
             k=5
         )
         retriever_time = time.time() - start_retrieve
