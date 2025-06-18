@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 os.environ["WANDB_MODE"] = "disabled"
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-token = load_token.token
+token = load_token.huggingface_token
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
