@@ -22,7 +22,7 @@
 2. **전처리**: 문장 압축 및 환경 관련 문장 추출
 3. **벡터 검색**: KoSimCSE + Chroma DB (가이드라인, 법령 분리)
 4. **Reranker**: Cross-encoder 기반 문서 재정렬
-5. **응답 생성**: Llama3Ko 기반 LLM 프롬프트 처리
+5. **응답 생성**: ktds-llama3.1 기반 LLM 프롬프트 처리
 6. **출력**: 판단 결과, 위배 조항, 법률, 해결 방안
 
 ![System Architecture](img/architecture.png)
@@ -116,7 +116,7 @@ npm run dev
 - Python 3.10+
 - LangChain, FAISS, Chroma
 - Transformers, SentencePiece
-- LLM API 또는 로컬 실행 (예: Llama3Ko)
+- LLM API 또는 로컬 실행 (예: ktds-llama3.1)
 - Seraph GPU 서버 환경 (32GB VRAM)
 
 ## 📁 폴더 구조
@@ -132,7 +132,7 @@ npm run dev
 ## 🧪 실험
 
 - **임베딩 모델**: KoSimCSE
-- **LLM 모델**: KoAlpaca, Mistral, Llama3Ko → **최종: Llama3Ko**
+- **LLM 모델**: KoAlpaca, Mistral, ktds-llama3.1 → **최종: ktds-llama3.1**
 - **프롬프트 전략**: zero-shot, one-shot, few-shot, CoT 적용
 - **검색 구조 실험**:
   - 단일 검색 vs. 이중 검색 vs. Reranker
