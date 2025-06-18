@@ -107,7 +107,9 @@ npm run dev
 
 이후 http://localhost:5173 또는 http://localhost:3000에서 접속 가능
 
-## 프론트엔드에서 문장을 입력하면 LLM 판단 결과를 확인할 수 있습니다
+프론트엔드에서 문장 입력 후, LLM 분석이 완료되면 다음과 같은 결과를 확인할 수 있습니다:
+
+![GreenCheck Demo](img/demo.gif)
 
 ## ⚙️ 기술 스택
 
