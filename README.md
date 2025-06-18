@@ -42,16 +42,72 @@
 
 ---
 
-## 🧪 실험
+## ⚙️ 실행 방법
 
-- **임베딩 모델**: KoSimCSE
-- **LLM 모델**: KoAlpaca, Mistral, Llama3Ko → **최종: Llama3Ko**
-- **프롬프트 전략**: zero-shot, one-shot, few-shot, CoT 적용
-- **검색 구조 실험**:
-  - 단일 검색 vs. 이중 검색 vs. Reranker
-  - **Reranker 기반 구조가 가장 안정적인 성능** 보임
+### 1️⃣ GitHub에서 코드 다운로드
 
----
+```bash
+git clone https://github.com/shin0112/final-project.git
+cd final-project
+```
+
+### 2️⃣ 가상환경 및 백엔드 설정
+
+✅ Python 가상환경 (선택)
+
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+```
+
+✅ Python 라이브러리 설치
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 3️⃣ 프론트엔드(npm) 설치
+
+```bash
+cd greencheck-ui
+npm install
+npm audit fix
+cd ..
+```
+
+### 4️⃣ 환경 변수 설정 (.env 또는 직접 입력)
+
+```dotenv
+HUGGINGFACE_TOKEN=your_token_here
+GROQ_API_KEY=your_groq_key_here
+```
+
+- [HuggingFace 토큰 생성](https://huggingface.co/settings/tokens)
+- [Groq API Key 생성](https://groq.com/)
+
+### 5️⃣ 서버 및 프론트 실행
+
+✅ 백엔드 실행
+
+```bash
+cd src
+uvicorn server.py:app
+```
+
+✅ 프론트엔드 실행
+
+```bash
+cd greencheck-ui
+npm run dev
+```
+
+이후 http://localhost:5173 또는 http://localhost:3000에서 접속 가능
+
+## 프론트엔드에서 문장을 입력하면 LLM 판단 결과를 확인할 수 있습니다
 
 ## ⚙️ 기술 스택
 
@@ -70,6 +126,17 @@
 ├── src/                   # 전체 파이프라인 코드
 └── README.md              # 현재 문서
 ```
+
+## 🧪 실험
+
+- **임베딩 모델**: KoSimCSE
+- **LLM 모델**: KoAlpaca, Mistral, Llama3Ko → **최종: Llama3Ko**
+- **프롬프트 전략**: zero-shot, one-shot, few-shot, CoT 적용
+- **검색 구조 실험**:
+  - 단일 검색 vs. 이중 검색 vs. Reranker
+  - **Reranker 기반 구조가 가장 안정적인 성능** 보임
+
+---
 
 ## 📌 참고사항
 
