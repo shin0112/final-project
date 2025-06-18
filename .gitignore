@@ -1,7 +1,6 @@
 # settings
 .venv
 .vscode
-config/
 **/__pycache__
 src/**.sh
 .env
@@ -9,5 +8,8 @@ logs/
 logs_backup**/
 
 # datasets
-data/
+data/faiss_index/
+data/faiss_index_backup/
+data/greenwashing/
+
 results/

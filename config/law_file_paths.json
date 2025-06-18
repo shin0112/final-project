@@ -1,0 +1,20 @@
+{
+  "ko_guideline_path_list": [
+    "data/law/R00.pdf",
+    "data/law/R01.pdf"
+  ],
+  "ko_law_path_list": [
+    "data/law/L00.pdf",
+    "data/law/L01.pdf",
+    "data/law/L02.pdf",
+    "data/law/L03.pdf",
+    "data/law/L04.pdf",
+    "data/law/L05.pdf",
+    "data/law/L06.pdf",
+    "data/law/L07.pdf"
+  ],
+  "en_law_path_list": [
+    "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=COM%3A2023%3A0166%3AFIN",
+    "https://www.ftc.gov/sites/default/files/attachments/press-releases/ftc-issues-revised-green-guides/greenguides.pdf"
+  ]
+}
