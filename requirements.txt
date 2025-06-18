@@ -1,7 +1,7 @@
 # Core dependencies for demo.py
 langchain==0.1.0
 langchain-community==0.0.20
-langchain-core==0.1.20
+langchain-core>=0.1.21
 langchain-groq==0.0.1
 
 # Data processing
@@ -15,9 +15,6 @@ sentence-transformers>=2.2.0
 
 # Vector database
 faiss-cpu>=1.7.4
-
-# Cross-encoder for reranking
-sentence-transformers>=2.2.0
 
 # Environment and configuration
 python-dotenv>=1.0.0
